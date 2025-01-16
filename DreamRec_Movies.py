@@ -668,7 +668,7 @@ def evaluate(model, genre_model, genre_diff, test_data, diff, device):
         genre_len_seq_b = genre_len_seq_b.to(device)
 
         n = torch.randint(0, args.timesteps, (batch_size,), device=device).long()
-        n_g = torch.randint(0, 500, (batch_size,), device=device).long()
+        n_g = torch.randint(0, 600, (batch_size,), device=device).long()
 
         genre_x_start = genre_model.cacu_x(genre_target_b)
         genre_h = genre_model.cacu_h(genre_seq_b, genre_len_seq_b, args.p)
@@ -832,7 +832,7 @@ if __name__ == '__main__':
             """Load Genres' Models"""
             genre_model = Tenc(args.hidden_factor, genres_item_num, genres_seq_size, args.dropout_rate,
                                args.diffuser_type, device)
-            genre_diff = diffusion(500, args.beta_start, args.beta_end, args.w)
+            genre_diff = diffusion(600, args.beta_start, args.beta_end, args.w)
             genre_model, genre_diff = load_genres_predictor(genre_model)
             genre_model.eval()
 
@@ -906,7 +906,7 @@ if __name__ == '__main__':
                     x_start = model.cacu_x(target).to(device)
 
                     n = torch.randint(0, args.timesteps, (args.batch_size,), device=device).long()
-                    n_g = torch.randint(0, 500, (args.batch_size,), device=device).long()
+                    n_g = torch.randint(0, 600, (args.batch_size,), device=device).long()
                     h = model.cacu_h(seq, len_seq, args.p).to(device)
 
                     """Calculate x_start for genres"""
