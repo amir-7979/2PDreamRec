@@ -656,7 +656,6 @@ def evaluate(model, genre_model, genre_diff, test_data, diff, device):
         x_start = model.cacu_x(target_t)
 
         h = model.cacu_h(seq_t, len_seq_t, args.p)
-        n = torch.randint(0, args.timesteps, (h.size()[0],), device=device).long()
         """"""
 
         """Add genres data to specified device"""
@@ -764,17 +763,17 @@ if __name__ == '__main__':
     args.alpha = 0.5
     if args.tune:
         metrics = [
-            Metric(name='timesteps', values=[i * 100 for i in range(1, 11)]),
             Metric(name='lr', values=[0.1, 0.01, 0.001, 0.0001, 0.00001]),
             Metric(name='optimizer', values=['adam', 'adamw', 'adagrad', 'rmsprop']),
+            Metric(name='timesteps', values=[i * 100 for i in range(1, 11)]),
             Metric(name='alpha', values=[i * 0.05 for i in range(1, 21)]),
         ]
         best_metrics = list()
     else:
         metrics = [
-            Metric(name='timesteps', values=[500]),
-            Metric(name='lr', values=[0.0001, ]),
-            Metric(name='optimizer', values=['adamw', ]),
+            Metric(name='lr', values=[0.001]),
+            Metric(name='optimizer', values=['adam']),
+            Metric(name='timesteps', values=[600]),
             Metric(name='alpha', values=[0.5]),
         ]
 
@@ -904,15 +903,15 @@ if __name__ == '__main__':
                     genre_len_seq = genre_len_seq.to(device)
                     """"""
 
-                    x_start = model.cacu_x(target)
+                    x_start = model.cacu_x(target).to(device)
 
                     n = torch.randint(0, args.timesteps, (args.batch_size,), device=device).long()
                     n_g = torch.randint(0, 500, (args.batch_size,), device=device).long()
-                    h = model.cacu_h(seq, len_seq, args.p)
+                    h = model.cacu_h(seq, len_seq, args.p).to(device)
 
                     """Calculate x_start for genres"""
-                    genre_x_start = genre_model.cacu_x(genre_target)
-                    genre_h = genre_model.cacu_h(genre_seq, genre_len_seq, args.p)
+                    genre_x_start = genre_model.cacu_x(genre_target).to(device)
+                    genre_h = genre_model.cacu_h(genre_seq, genre_len_seq, args.p).to(device)
                     _, genre_predicted_x = genre_diff.p_losses(genre_model, genre_x_start, genre_h, n_g, loss_type='l2')
 
                     """"""
