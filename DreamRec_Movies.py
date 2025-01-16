@@ -594,7 +594,7 @@ class MovieTenc(Tenc):
         return scores
 
 
-def load_genres_predictor(tenc, tenc_path='models/tencVG49.pth', diff_path='models/diffVG49.pth'):
+def load_genres_predictor(tenc, tenc_path='models/tencVG79.pth', diff_path='models/diffVG79.pth'):
     tenc.load_state_dict(torch.load(tenc_path))
     diff = torch.load(diff_path)
 
