@@ -81,24 +81,50 @@ def normalize(inputs,
 
 
 def calculate_hit(sorted_list, topk, target, hit_purchase, ndcg_purchase):
+    """
+    Calculate Hit@K and NDCG@K metrics.
+
+    Args:
+        sorted_list (ndarray): Predicted item indices of shape (batch_size, max_k).
+        topk (list): List of k values for which metrics are calculated (e.g., [5, 10, 20]).
+        target (ndarray): Ground truth item indices of shape (batch_size,).
+        hit_purchase (list): Accumulated hit counts for each k.
+        ndcg_purchase (list): Accumulated NDCG scores for each k.
+    """
+    batch_size = len(target)  # Number of items in the batch
+
     for i, k in enumerate(topk):
-        # Calculate HR@K
-        hit_purchase[i] += np.isin(target, sorted_list[:, :k]).sum()
+        # Initialize relevance matrix for this batch and top-k
+        relevance = np.zeros((batch_size, k))
+
+        # Populate the relevance matrix
+        for idx in range(batch_size):
+            true_target = target[idx]
+            top_k_items = sorted_list[idx, :k]
+
+            # Check if the target is in the top-k
+            if true_target in top_k_items:
+                rank = np.where(top_k_items == true_target)[0][0]
+                relevance[idx, rank] = 1  # Mark relevant position
+
+        # Debug: Print the relevance matrix for inspection
+
+        # Calculate Hit@K
+        hit_purchase[i] += np.sum(relevance)
+
+        # Generate y_score matrix (assume higher scores for higher ranks)
+        y_score = np.tile(np.arange(k, 0, -1), (batch_size, 1))  # Descending scores
 
         # Calculate NDCG@K
-        # Create a binary relevance matrix for NDCG calculation
-        relevance = np.zeros((len(target), k))  # 2D array: (batch_size, k)
-        for idx, t in enumerate(target):
-            if t in sorted_list[idx, :k]:
-                rank = np.where(sorted_list[idx, :k] == t)[0][0]
-                relevance[idx, rank] = 1  # Mark the position of the target item
+        if np.any(relevance):  # Ensure there is at least one relevant item
+            batch_ndcg = ndcg_score(relevance, y_score, k=k)
+        else:
+            batch_ndcg = 0  # No contribution if no relevance
 
-        # Create a dummy y_score matrix (predicted scores)
-        # Here, we assume the scores decrease linearly from k to 1
-        y_score = np.tile(np.arange(k, 0, -1), (len(target), 1))  # Shape: (batch_size, k)
+        ndcg_purchase[i] += batch_ndcg
 
-        # Calculate NDCG@K
-        ndcg_purchase[i] += ndcg_score(relevance, y_score, k=k)
+        # Debug: Print NDCG for this batch
+        print(f"NDCG for Top-{k}: {batch_ndcg:.4f}")
 
 
 class NeuProcessEncoder(nn.Module):
