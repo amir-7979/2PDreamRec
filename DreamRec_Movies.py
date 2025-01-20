@@ -760,7 +760,7 @@ class Metric:
 
 
 if __name__ == '__main__':
-    args.alpha = 0.5
+    args.alpha = 0.45
     if args.tune:
         metrics = [
             Metric(name='optimizer', values=['adagrad','adam', 'adamw', 'rmsprop']),
@@ -771,10 +771,10 @@ if __name__ == '__main__':
         best_metrics = list()
     else:
         metrics = [
-            Metric(name='lr', values=[0.001]),
-            Metric(name='optimizer', values=['adam']),
-            Metric(name='timesteps', values=[600]),
-            Metric(name='alpha', values=[0.5]),
+            Metric(name='lr', values=[0.01]),
+            Metric(name='optimizer', values=['adamw']),
+            Metric(name='timesteps', values=[100]),
+            Metric(name='alpha', values=[0.45]),
         ]
 
     for metric in metrics:
