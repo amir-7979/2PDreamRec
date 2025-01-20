@@ -440,7 +440,7 @@ def evaluate(model, test_data, diff, device):
         """"""
 
         prediction = model.predict(states, np.array(len_seq_b), diff)
-        _, topK = prediction.topk(10, dim=1, largest=True, sorted=True)
+        _, topK = prediction.topk(20, dim=1, largest=True, sorted=True)
         topK = topK.cpu().detach().numpy()
         sorted_list2 = np.flip(topK, axis=1)
         sorted_list2 = sorted_list2
@@ -511,9 +511,9 @@ if __name__ == '__main__':
         best_metrics = list()
     else:
         metrics = [
-            Metric(name='lr', values=[0.0001, ]),
-            Metric(name='optimizer', values=['adamw', ]),
-            Metric(name='timesteps', values=[500]),
+            Metric(name='lr', values=[0.001]),
+            Metric(name='optimizer', values=['adam']),
+            Metric(name='timesteps', values=[600]),
         ]
 
     for metric in metrics:

@@ -763,8 +763,8 @@ if __name__ == '__main__':
     args.alpha = 0.5
     if args.tune:
         metrics = [
+            Metric(name='optimizer', values=['adagrad','adam', 'adamw', 'rmsprop']),
             Metric(name='lr', values=[0.1, 0.01, 0.001, 0.0001, 0.00001]),
-            Metric(name='optimizer', values=['adam', 'adamw', 'adagrad', 'rmsprop']),
             Metric(name='timesteps', values=[i * 100 for i in range(1, 11)]),
             Metric(name='alpha', values=[i * 0.05 for i in range(1, 21)]),
         ]
@@ -840,19 +840,19 @@ if __name__ == '__main__':
                 parameter.requires_grad = False
 
             """"""
+            model.to(device)
 
-            if args.optimizer == 'adam':
-                optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, eps=1e-8, weight_decay=args.l2_decay)
+            if args.optimizer == 'adagrad':
+                optimizer = torch.optim.Adagrad(model.parameters(), lr=args.lr, eps=1e-8, weight_decay=args.l2_decay)
             elif args.optimizer == 'adamw':
                 optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, eps=1e-8, weight_decay=args.l2_decay)
-            elif args.optimizer == 'adagrad':
-                optimizer = torch.optim.Adagrad(model.parameters(), lr=args.lr, eps=1e-8, weight_decay=args.l2_decay)
+            elif args.optimizer == 'adam':
+                optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, eps=1e-8, weight_decay=args.l2_decay)
             elif args.optimizer == 'rmsprop':
                 optimizer = torch.optim.RMSprop(model.parameters(), lr=args.lr, eps=1e-8, weight_decay=args.l2_decay)
 
             # scheduler = lr_scheduler.LinearLR(optimizer, start_factor=0.1, end_factor=1, total_iters=20)
 
-            model.to(device)
 
             """Load the genres model into the specified device"""
             genre_model.to(device)
