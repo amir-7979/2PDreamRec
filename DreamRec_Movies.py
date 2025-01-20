@@ -611,26 +611,40 @@ def one_hot_encoding(target, item_num):
 
 def evaluate(model, genre_model, genre_diff, test_data, diff, device):
     eval_data = pd.read_pickle(os.path.join(data_directory, test_data))
-    eval_data = eval_data.sample(frac=1).reset_index(drop=True)  # Shuffle test data
 
     batch_size = 100
+    evaluated = 0
+    total_clicks = 1.0
     total_purchase = 0.0
+    total_reward = [0, 0, 0, 0]
+    hit_clicks = [0, 0, 0, 0]
+    ndcg_clicks = [0, 0, 0, 0]
     hit_purchase = [0, 0, 0, 0]
     ndcg_purchase = [0, 0, 0, 0]
 
-    seq, len_seq, target = list(eval_data['seq'].values), list(eval_data['len_seq'].values), list(eval_data['next'].values)
-    genre_seq, genre_len_seq, genre_target = list(eval_data['seq_genres'].values), list(eval_data['len_seq'].values), list(eval_data['target_genre'].values)
+    seq, len_seq, target = list(eval_data['seq'].values), list(eval_data['len_seq'].values), list(
+        eval_data['next'].values)
+    genre_seq, genre_len_seq, genre_target = list(eval_data['seq_genres'].values), list(
+        eval_data['len_seq'].values), list(eval_data['target_genre'].values)
 
     num_total = len(seq)
     losses = []
     for i in range(num_total // batch_size):
-        seq_b, len_seq_b, target_b = seq[i * batch_size: (i + 1) * batch_size], len_seq[i * batch_size: (i + 1) * batch_size], target[i * batch_size: (i + 1) * batch_size]
-        genre_seq_b, genre_len_seq_b, genre_target_b = genre_seq[i * batch_size: (i + 1) * batch_size], genre_len_seq[i * batch_size: (i + 1) * batch_size], genre_target[i * batch_size: (i + 1) * batch_size]
+        seq_b, len_seq_b, target_b = seq[i * batch_size: (i + 1) * batch_size], len_seq[i * batch_size: (
+                                                                                                                    i + 1) * batch_size], target[
+                                                                                                                                          i * batch_size: (
+                                                                                                                                                                      i + 1) * batch_size]
+        genre_seq_b, genre_len_seq_b, genre_target_b = genre_seq[i * batch_size: (i + 1) * batch_size], genre_len_seq[
+                                                                                                        i * batch_size: (
+                                                                                                                                    i + 1) * batch_size], genre_target[
+                                                                                                                                                          i * batch_size: (
+                                                                                                                                                                                      i + 1) * batch_size]
 
         states = np.array(seq_b)
         states = torch.LongTensor(states)
         states = states.to(device)
 
+        """"""
         seq_t = torch.LongTensor(seq_b)
         len_seq_t = torch.LongTensor(len_seq_b)
         target_t = torch.LongTensor(target_b)
@@ -640,8 +654,11 @@ def evaluate(model, genre_model, genre_diff, test_data, diff, device):
         len_seq_t = len_seq_t.to(device)
 
         x_start = model.cacu_x(target_t)
-        h = model.cacu_h(seq_t, len_seq_t, args.p)
 
+        h = model.cacu_h(seq_t, len_seq_t, args.p)
+        """"""
+
+        """Add genres data to specified device"""
         genre_seq_b = torch.LongTensor(genre_seq_b)
         genre_len_seq_b = torch.LongTensor(genre_len_seq_b)
         genre_target_b = torch.LongTensor(genre_target_b)
@@ -656,17 +673,27 @@ def evaluate(model, genre_model, genre_diff, test_data, diff, device):
         genre_x_start = genre_model.cacu_x(genre_target_b)
         genre_h = genre_model.cacu_h(genre_seq_b, genre_len_seq_b, args.p)
         _, genre_predicted_x = genre_diff.p_losses(genre_model, genre_x_start, genre_h, n_g, loss_type='l2')
+        """"""
 
         loss, predicted_x = diff.p_losses(model, x_start, h, n, genres_embd=genre_predicted_x, loss_type='l2')
+
         predicted_items = model.decoder(predicted_x)
+        # loss = loss_function(predicted_items, target_t)
 
         losses.append(loss.item())
 
-        # Debugging: Print top-k predictions and targets
-        _, topK = predicted_items.topk(20, dim=1, largest=True, sorted=True)
-        topK = topK.cpu().detach().numpy()
-        sorted_list2 = np.flip(topK, axis=1)
-        calculate_hit(sorted_list2, topk, target_b, hit_purchase, ndcg_purchase)
+        # prediction = model.predict(states, np.array(len_seq_b), diff, genre_predicted_x)
+        # assert False, (np.shape(prediction,), np.shape(predicted_x))
+        try:
+            # prediction = model.predict(states, np.array(len_seq_b), diff, genre_predicted_x)
+            prediction = F.softmax(predicted_items, dim=-1)
+            _, topK = prediction.topk(20, dim=1, largest=True, sorted=True)
+            topK = topK.cpu().detach().numpy()
+            sorted_list2 = np.flip(topK, axis=1)
+            sorted_list2 = sorted_list2
+            calculate_hit(sorted_list2, topk, target_b, hit_purchase, ndcg_purchase)
+        except:
+            pass
 
         total_purchase += batch_size
 
@@ -679,8 +706,16 @@ def evaluate(model, genre_model, genre_diff, test_data, diff, device):
     for i in range(len(topk)):
         hr_purchase = hit_purchase[i] / total_purchase
         ng_purchase = ndcg_purchase[i] / total_purchase
-        hr_list.append(hr_purchase)
-        ndcg_list.append(ng_purchase)
+        # assert False, ndcg_purchase
+        try:
+            hr_list.append(hr_purchase)
+            # assert False, ng_purchase
+            ndcg_list.append(ng_purchase[0, 0])
+        except:
+            pass
+
+        if i == 1:
+            hr_20 = hr_purchase
 
     if len(hr_list) == 3 and len(ndcg_list) == 3:
         print(
@@ -688,9 +723,12 @@ def evaluate(model, genre_model, genre_diff, test_data, diff, device):
                                                                                  (ndcg_list[1]), hr_list[2],
                                                                                  (ndcg_list[2])))
 
+    else:
+        pass
     print(f'loss:{sum(losses) / len(losses)}')
 
     return sum(losses) / len(losses), hr_list[0]
+
 
 import numpy as np
 from tqdm import tqdm
