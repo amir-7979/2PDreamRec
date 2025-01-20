@@ -123,9 +123,6 @@ def calculate_hit(sorted_list, topk, target, hit_purchase, ndcg_purchase):
 
         ndcg_purchase[i] += batch_ndcg
 
-        # Debug: Print NDCG for this batch
-        print(f"NDCG for Top-{k}: {batch_ndcg:.4f}")
-
 
 class NeuProcessEncoder(nn.Module):
     def __init__(self, input_size=64, hidden_size=64, output_size=64, dropout_prob=0.4, device=None):
