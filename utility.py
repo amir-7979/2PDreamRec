@@ -4,9 +4,13 @@ import math
 import numpy as np
 import pandas as pd
 from collections import deque
+from sklearn.metrics import ndcg_score
+
 import torch.nn as nn
 import torch
 import torch.nn.functional as F
+
+
 # import tensorflow as tf
 
 
@@ -22,11 +26,12 @@ def to_pickled_df(data_directory, **kwargs):
     for name, df in kwargs.items():
         df.to_pickle(os.path.join(data_directory, name + '.df'))
 
-def pad_history(itemlist,length,pad_item):
-    if len(itemlist)>=length:
+
+def pad_history(itemlist, length, pad_item):
+    if len(itemlist) >= length:
         return itemlist[-length:]
-    if len(itemlist)<length:
-        temp = [pad_item] * (length-len(itemlist))
+    if len(itemlist) < length:
+        temp = [pad_item] * (length - len(itemlist))
         itemlist.extend(temp)
         return itemlist
 
@@ -75,56 +80,29 @@ def normalize(inputs,
 
     return outputs
 
-def calculate_hit(sorted_list,topk,true_items,hit_purchase,ndcg_purchase):
-    for i in range(len(topk)):
-        rec_list = sorted_list[:, -topk[i]:]
-        # print(rec_list)
-        # print(true_items)
-        # print('...........')
-        # break
-        for j in range(len(true_items)):
-            if true_items[j] in rec_list[j]:
-                rank = topk[i] - np.argwhere(rec_list[j] == true_items[j])
-                # total_reward[i] += rewards[j]
-                # if rewards[j] == r_click:
-                #     hit_click[i] += 1.0
-                #     ndcg_click[i] += 1.0 / np.log2(rank + 1)
-                # else:
-                hit_purchase[i] += 1.0
-                ndcg_purchase[i] += 1.0 / np.log2(rank + 1)
 
+def calculate_hit(sorted_list, topk, target, hit_purchase, ndcg_purchase):
+    for i, k in enumerate(topk):
+        hit_purchase[i] += np.isin(target, sorted_list[:, :k]).sum()
+        ndcg_purchase[i] += ndcg_score([target], [sorted_list[:, :k]], k=k)
 
-
-
-# class Memory():
-#     def __init__(self):
-#         self.buffer = deque()
-#
-#     def add(self, experience):
-#         self.buffer.append(experience)
-#
-#     def sample(self, batch_size):
-#         idx = np.random.choice(np.arange(len(self.buffer)),
-#                                size=batch_size,
-#                                replace=False)
-#         return [self.buffer[ii] for ii in idx]
 
 class NeuProcessEncoder(nn.Module):
     def __init__(self, input_size=64, hidden_size=64, output_size=64, dropout_prob=0.4, device=None):
         super(NeuProcessEncoder, self).__init__()
         self.device = device
-        
+
         # Encoder for item embeddings
         layers = [nn.Linear(input_size, hidden_size),
-                torch.nn.Dropout(dropout_prob),
-                nn.ReLU(inplace=True),
-                nn.Linear(hidden_size, output_size)]
+                  torch.nn.Dropout(dropout_prob),
+                  nn.ReLU(inplace=True),
+                  nn.Linear(hidden_size, output_size)]
         self.input_to_hidden = nn.Sequential(*layers)
 
         # Encoder for latent vector z
-        self.z1_dim = input_size # 64
-        self.z2_dim = hidden_size # 64
-        self.z_dim = output_size # 64
+        self.z1_dim = input_size  # 64
+        self.z2_dim = hidden_size  # 64
+        self.z_dim = output_size  # 64
         self.z_to_hidden = nn.Linear(self.z1_dim, self.z2_dim)
         self.hidden_to_mu = nn.Linear(self.z2_dim, self.z_dim)
         self.hidden_to_logsigma = nn.Linear(self.z2_dim, self.z_dim)
@@ -145,7 +123,7 @@ class NeuProcessEncoder(nn.Module):
         eps = torch.randn_like(std)
         z = eps.mul(std).add_(mu)
         return z, mu, log_sigma
-    
+
     def encoder(self, input_tensor):
         z_ = self.emb_encode(input_tensor)
         z = self.aggregate(z_)
@@ -164,7 +142,7 @@ class MemoryUnit(nn.Module):
         self.clusters_k = clusters_k
         self.input_size = input_size
         self.output_size = output_size
-        self.array = nn.Parameter(init.xavier_uniform_(torch.FloatTensor(self.clusters_k, input_size*output_size)))
+        self.array = nn.Parameter(init.xavier_uniform_(torch.FloatTensor(self.clusters_k, input_size * output_size)))
         self.index = nn.Parameter(init.xavier_uniform_(torch.FloatTensor(self.clusters_k, emb_size)))
         self.softmax = nn.Softmax(dim=-1)
 
@@ -172,11 +150,11 @@ class MemoryUnit(nn.Module):
         """
         bias_emb: [batch_size, 1, emb_size]
         """
-        att_scores = torch.matmul(bias_emb, self.index.transpose(-1, -2)) # [batch_size, clusters_k]
+        att_scores = torch.matmul(bias_emb, self.index.transpose(-1, -2))  # [batch_size, clusters_k]
         att_scores = self.softmax(att_scores)
 
         # [batch_size, input_size, output_size]
-        para_new = torch.matmul(att_scores, self.array) # [batch_size, input_size*output_size]
+        para_new = torch.matmul(att_scores, self.array)  # [batch_size, input_size*output_size]
         para_new = para_new.view(-1, self.output_size, self.input_size)
 
         return para_new
@@ -198,7 +176,7 @@ class FeedForward(nn.Module):
     """
 
     def __init__(
-        self, hidden_size, inner_size, hidden_dropout_prob, hidden_act, layer_norm_eps
+            self, hidden_size, inner_size, hidden_dropout_prob, hidden_act, layer_norm_eps
     ):
         super(FeedForward, self).__init__()
         self.dense_1 = nn.Linear(hidden_size, inner_size)
@@ -240,7 +218,6 @@ class FeedForward(nn.Module):
         return hidden_states
 
 
-
 class ItemToInterestAggregation(nn.Module):
     def __init__(self, seq_len, hidden_size, k_interests=5):
         super().__init__()
@@ -257,14 +234,14 @@ class ItemToInterestAggregation(nn.Module):
 
 class LightMultiHeadAttention(nn.Module):
     def __init__(
-        self,
-        n_heads,
-        k_interests,
-        hidden_size,
-        seq_len,
-        hidden_dropout_prob,
-        attn_dropout_prob,
-        layer_norm_eps,
+            self,
+            n_heads,
+            k_interests,
+            hidden_size,
+            seq_len,
+            hidden_dropout_prob,
+            attn_dropout_prob,
+            layer_norm_eps,
     ):
         super(LightMultiHeadAttention, self).__init__()
         if hidden_size % n_heads != 0:
@@ -294,7 +271,7 @@ class LightMultiHeadAttention(nn.Module):
         self.pos_q_linear = nn.Linear(hidden_size, self.all_head_size)
         self.pos_k_linear = nn.Linear(hidden_size, self.all_head_size)
         self.pos_scaling = (
-            float(self.attention_head_size * self.attn_scale_factor) ** -0.5
+                float(self.attention_head_size * self.attn_scale_factor) ** -0.5
         )
         self.pos_ln = nn.LayerNorm(hidden_size, eps=layer_norm_eps)
 
@@ -337,7 +314,7 @@ class LightMultiHeadAttention(nn.Module):
         value_layer_pos = self.transpose_for_scores(mixed_value_layer)
         pos_emb = self.pos_ln(pos_emb).unsqueeze(0)
         pos_query_layer = (
-            self.transpose_for_scores(self.pos_q_linear(pos_emb)) * self.pos_scaling
+                self.transpose_for_scores(self.pos_q_linear(pos_emb)) * self.pos_scaling
         )
         pos_key_layer = self.transpose_for_scores(self.pos_k_linear(pos_emb))
 
@@ -358,6 +335,7 @@ class LightMultiHeadAttention(nn.Module):
 
         return hidden_states
 
+
 class LightTransformerLayer(nn.Module):
     """
     One transformer layer consists of a multi-head self-attention layer and a point-wise feed-forward layer.
@@ -369,16 +347,16 @@ class LightTransformerLayer(nn.Module):
     """
 
     def __init__(
-        self,
-        n_heads,
-        k_interests,
-        hidden_size,
-        seq_len,
-        intermediate_size,
-        hidden_dropout_prob,
-        attn_dropout_prob,
-        hidden_act,
-        layer_norm_eps,
+            self,
+            n_heads,
+            k_interests,
+            hidden_size,
+            seq_len,
+            intermediate_size,
+            hidden_dropout_prob,
+            attn_dropout_prob,
+            hidden_act,
+            layer_norm_eps,
     ):
         super(LightTransformerLayer, self).__init__()
         self.multi_head_attention = LightMultiHeadAttention(
@@ -419,17 +397,17 @@ class LightTransformerEncoder(nn.Module):
     """
 
     def __init__(
-        self,
-        n_layers=2,
-        n_heads=2,
-        k_interests=5,
-        hidden_size=64,
-        seq_len=50,
-        inner_size=256,
-        hidden_dropout_prob=0.5,
-        attn_dropout_prob=0.5,
-        hidden_act="gelu",
-        layer_norm_eps=1e-12,
+            self,
+            n_layers=2,
+            n_heads=2,
+            k_interests=5,
+            hidden_size=64,
+            seq_len=50,
+            inner_size=256,
+            hidden_dropout_prob=0.5,
+            attn_dropout_prob=0.5,
+            hidden_act="gelu",
+            layer_norm_eps=1e-12,
     ):
 
         super(LightTransformerEncoder, self).__init__()
