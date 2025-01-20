@@ -75,21 +75,12 @@ def normalize(inputs,
 
     return outputs
 
-def calculate_hit(sorted_list,topk,true_items,hit_purchase,ndcg_purchase):
+def calculate_hit(sorted_list, topk, true_items, hit_purchase, ndcg_purchase):
     for i in range(len(topk)):
-        rec_list = sorted_list[:, -topk[i]:]
-        # print(rec_list)
-        # print(true_items)
-        # print('...........')
-        # break
+        rec_list = sorted_list[:, :topk[i]]  # Select the top-k items for the given cutoff
         for j in range(len(true_items)):
             if true_items[j] in rec_list[j]:
-                rank = topk[i] - np.argwhere(rec_list[j] == true_items[j])
-                # total_reward[i] += rewards[j]
-                # if rewards[j] == r_click:
-                #     hit_click[i] += 1.0
-                #     ndcg_click[i] += 1.0 / np.log2(rank + 1)
-                # else:
+                rank = np.argwhere(rec_list[j] == true_items[j])[0][0] + 1  # Rank starts from 1
                 hit_purchase[i] += 1.0
                 ndcg_purchase[i] += 1.0 / np.log2(rank + 1)
 
