@@ -100,6 +100,7 @@ def calculate_hit(sorted_list, topk, target, hit_purchase, ndcg_purchase):
         # Calculate NDCG@K
         ndcg_purchase[i] += ndcg_score(relevance, y_score, k=k)
 
+
 class NeuProcessEncoder(nn.Module):
     def __init__(self, input_size=64, hidden_size=64, output_size=64, dropout_prob=0.4, device=None):
         super(NeuProcessEncoder, self).__init__()
