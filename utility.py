@@ -5,7 +5,6 @@ import numpy as np
 import pandas as pd
 from collections import deque
 from sklearn.metrics import ndcg_score
-
 import torch.nn as nn
 import torch
 import torch.nn.functional as F
@@ -83,9 +82,23 @@ def normalize(inputs,
 
 def calculate_hit(sorted_list, topk, target, hit_purchase, ndcg_purchase):
     for i, k in enumerate(topk):
+        # Calculate HR@K
         hit_purchase[i] += np.isin(target, sorted_list[:, :k]).sum()
-        ndcg_purchase[i] += ndcg_score([target], [sorted_list[:, :k]], k=k)
 
+        # Calculate NDCG@K
+        # Create a binary relevance matrix for NDCG calculation
+        relevance = np.zeros((len(target), k))  # 2D array: (batch_size, k)
+        for idx, t in enumerate(target):
+            if t in sorted_list[idx, :k]:
+                rank = np.where(sorted_list[idx, :k] == t)[0][0]
+                relevance[idx, rank] = 1  # Mark the position of the target item
+
+        # Create a dummy y_score matrix (predicted scores)
+        # Here, we assume the scores decrease linearly from k to 1
+        y_score = np.tile(np.arange(k, 0, -1), (len(target), 1))  # Shape: (batch_size, k)
+
+        # Calculate NDCG@K
+        ndcg_purchase[i] += ndcg_score(relevance, y_score, k=k)
 
 class NeuProcessEncoder(nn.Module):
     def __init__(self, input_size=64, hidden_size=64, output_size=64, dropout_prob=0.4, device=None):
