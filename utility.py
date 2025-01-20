@@ -75,26 +75,10 @@ def normalize(inputs,
 
     return outputs
 
-def calculate_hit(sorted_list,topk,true_items,hit_purchase,ndcg_purchase):
+def calculate_hit(sorted_list, topk, target, hit_purchase, ndcg_purchase):
     for i in range(len(topk)):
-        rec_list = sorted_list[:, -topk[i]:]
-        # print(rec_list)
-        # print(true_items)
-        # print('...........')
-        # break
-        for j in range(len(true_items)):
-            if true_items[j] in rec_list[j]:
-                rank = topk[i] - np.argwhere(rec_list[j] == true_items[j])
-                # total_reward[i] += rewards[j]
-                # if rewards[j] == r_click:
-                #     hit_click[i] += 1.0
-                #     ndcg_click[i] += 1.0 / np.log2(rank + 1)
-                # else:
-                hit_purchase[i] += 1.0
-                ndcg_purchase[i] += 1.0 / np.log2(rank + 1)
-
-
-
+        hit_purchase[i] += np.sum([1 if target[j] in sorted_list[j][:topk[i]] else 0 for j in range(len(target))])
+        ndcg_purchase[i] += np.sum([1 / np.log2(sorted_list[j].index(target[j]) + 2) if target[j] in sorted_list[j][:topk[i]] else 0 for j in range(len(target))])
 
 # class Memory():
 #     def __init__(self):
