@@ -75,11 +75,17 @@ def normalize(inputs,
 
     return outputs
 
+
 def calculate_hit(sorted_list, topk, target, hit_purchase, ndcg_purchase):
     for i in range(len(topk)):
-        hit_purchase[i] += np.sum([1 if target[j] in sorted_list[j][:topk[i]] else 0 for j in range(len(target))])
-        ndcg_purchase[i] += np.sum([1 / np.log2(sorted_list[j].index(target[j]) + 2) if target[j] in sorted_list[j][:topk[i]] else 0 for j in range(len(target))])
+        for j in range(len(target)):
+            if target[j] in sorted_list[j][:topk[i]]:
+                # Calculate hit rate
+                hit_purchase[i] += 1
 
+                # Calculate NDCG
+                rank = np.where(sorted_list[j] == target[j])[0][0] + 1  # Find the rank of the target item
+                ndcg_purchase[i] += 1 / np.log2(rank + 1)
 # class Memory():
 #     def __init__(self):
 #         self.buffer = deque()

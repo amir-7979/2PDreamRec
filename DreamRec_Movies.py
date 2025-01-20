@@ -680,7 +680,7 @@ def evaluate(model, genre_model, genre_diff, test_data, diff, device):
         hr_purchase = hit_purchase[i] / total_purchase
         ng_purchase = ndcg_purchase[i] / total_purchase
         hr_list.append(hr_purchase)
-        ndcg_list.append(ng_purchase[0, 0])
+        ndcg_list.append(ng_purchase)
 
     if len(hr_list) == 3 and len(ndcg_list) == 3:
         print(
