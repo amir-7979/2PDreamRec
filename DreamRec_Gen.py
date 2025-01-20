@@ -511,7 +511,7 @@ if __name__ == '__main__':
         best_metrics = list()
     else:
         metrics = [
-            Metric(name='lr', values=[0.001, ]),
+            Metric(name='lr', values=[0.001]),
             Metric(name='optimizer', values=['adam']),
             Metric(name='timesteps', values=[600]),
         ]
