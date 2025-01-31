@@ -547,18 +547,13 @@ if __name__ == '__main__':
                 optimizer = torch.optim.Adagrad(model.parameters(), lr=args.lr, eps=1e-8, weight_decay=args.l2_decay)
             elif args.optimizer == 'rmsprop':
                 optimizer = torch.optim.RMSprop(model.parameters(), lr=args.lr, eps=1e-8, weight_decay=args.l2_decay)
-
             # scheduler = lr_scheduler.LinearLR(optimizer, start_factor=0.1, end_factor=1, total_iters=20)
-
             model.to(device)
             # optimizer.to(device)
-
             train_data = pd.read_pickle(os.path.join(data_directory, 'train_data_g.df'))
-
             total_step = 0
             hr_max = 0
             best_epoch = 0
-
             num_rows = train_data.shape[0]
             num_batches = int(num_rows / args.batch_size)
             for i in range(args.epoch):
@@ -568,20 +563,15 @@ if __name__ == '__main__':
                     seq = list(batch['seq'].values())
                     len_seq = list(batch['len_seq'].values())
                     target = list(batch['next'].values())
-
                     optimizer.zero_grad()
                     seq = torch.LongTensor(seq)
                     len_seq = torch.LongTensor(len_seq)
                     target = torch.LongTensor(target)
-
                     seq = seq.to(device)
                     target = target.to(device)
                     len_seq = len_seq.to(device)
-
                     x_start = model.cacu_x(target)
-
                     h = model.cacu_h(seq, len_seq, args.p)
-
                     n = torch.randint(0, args.timesteps, (args.batch_size,), device=device).long()
                     loss, predicted_x = diff.p_losses(model, x_start, h, n, loss_type='l2')
                     loss.backward()
@@ -592,9 +582,7 @@ if __name__ == '__main__':
                         print("Epoch {:03d}; ".format(i) + 'Train loss: {:.4f}; '.format(
                             loss) + "Time cost: " + Time.strftime(
                             "%H: %M: %S", Time.gmtime(Time.time() - start_time)))
-
                     if (i + 1) % 10 == 0:
-
                         eval_start = Time.time()
                         print('-------------------------- VAL PHRASE --------------------------')
                         loss, hr = evaluate(model, 'val_data_g.df', diff, device)
@@ -602,13 +590,10 @@ if __name__ == '__main__':
                         _ = evaluate(model, 'test_data_g.df', diff, device)
                         print("Evalution cost: " + Time.strftime("%H: %M: %S", Time.gmtime(Time.time() - eval_start)))
                         print('----------------------------------------------------------------')
-
                         metric.eval_dict[value].append(hr)
-
                         if not args.tune:
                             torch.save(model.state_dict(), f"./models/tencVG{i}.pth")
                             torch.save(diff, f"./models/diffVG{i}.pth")
-
         if args.tune:
             metric.find_max_one()
             best_metrics.append(metric)

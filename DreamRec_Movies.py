@@ -43,19 +43,19 @@ def parse_args():
                         help='GRU layers (not used in all code, but present).')
     parser.add_argument('--hidden_factor', type=int, default=64,
                         help='Number of hidden factors, i.e. embedding size.')
-    parser.add_argument('--timesteps', type=int, default=200,
+    parser.add_argument('--timesteps', type=int, default=600,
                         help='Timesteps for diffusion.')
     parser.add_argument('--beta_end', type=float, default=0.02,
                         help='Beta end of diffusion.')
     parser.add_argument('--beta_start', type=float, default=0.0001,
                         help='Beta start of diffusion.')
-    parser.add_argument('--lr', type=float, default=0.005,
+    parser.add_argument('--lr', type=float, default=0.001,
                         help='Learning rate.')
-    parser.add_argument('--l2_decay', type=float, default=1e-4,
+    parser.add_argument('--l2_decay', type=float, default=0.3,
                         help='L2 loss reg coef.')
     parser.add_argument('--cuda', type=int, default=0,
                         help='CUDA device.')
-    parser.add_argument('--dropout_rate', type=float, default=0.001,
+    parser.add_argument('--dropout_rate', type=float, default=0.3,
                         help='Dropout rate.')
     parser.add_argument('--w', type=float, default=2.0,
                         help='Weight used in x_start update inside sampler.')
@@ -427,7 +427,7 @@ class MovieTenc(Tenc):
         self.state_size = state_size
         self.hidden_size = hidden_size
         self.item_num = int(item_num)
-        self.dropout = nn.Dropout(0.3)
+        self.dropout = nn.Dropout(dropout)
         self.diffuser_type = diffuser_type
         self.device = device
         self.item_embeddings = nn.Embedding(num_embeddings=item_num + 1, embedding_dim=hidden_size)
@@ -435,14 +435,14 @@ class MovieTenc(Tenc):
         self.none_embedding = nn.Embedding(num_embeddings=1, embedding_dim=self.hidden_size)
         nn.init.normal_(self.none_embedding.weight, 0, 1)
         self.positional_embeddings = nn.Embedding(num_embeddings=state_size, embedding_dim=hidden_size)
-        self.emb_dropout = nn.Dropout(0.3)
+        self.emb_dropout = nn.Dropout(dropout)
         self.ln_1 = nn.LayerNorm(hidden_size)
         self.ln_2 = nn.LayerNorm(hidden_size)
         self.ln_3 = nn.LayerNorm(hidden_size)
         self.mh_attn = MultiHeadAttention(hidden_size, hidden_size, num_heads, dropout)
         self.feed_forward = PositionwiseFeedForward(hidden_size, hidden_size, dropout)
         self.s_fc = nn.Linear(hidden_size, item_num)
-        self.embedding_dropout = nn.Dropout(0.3)  # Dropout for embeddings
+        self.embedding_dropout = nn.Dropout(dropout)
 
         self.step_mlp = nn.Sequential(
             SinusoidalPositionEmbeddings(self.hidden_size),
@@ -529,7 +529,7 @@ class MovieTenc(Tenc):
 ##############################################################################
 #                  LOAD GENRES MODEL                   #
 ##############################################################################
-def load_genres_predictor(tenc, tenc_path='models/tencVG49.pth', diff_path='models/diffVG49.pth'):
+def load_genres_predictor(tenc, tenc_path='models/tencVG79.pth', diff_path='models/diffVG79.pth'):
     tenc.load_state_dict(torch.load(tenc_path))
     diff = torch.load(diff_path)
     return tenc, diff
@@ -650,18 +650,15 @@ class NoiseConditionalScoreLoss(nn.Module):
 
 def evaluate(model, genre_model, genre_diff, test_data, diff, device):
     eval_data = pd.read_pickle(os.path.join(data_directory, test_data))
-    batch_size = 128
+    batch_size = args.batch_size
     topk = [5, 10, 20]
     total_samples = 0
     hit_purchase = np.zeros(len(topk))
     ndcg_purchase = np.zeros(len(topk))
     losses = []
-
-    # Extract test data sequences and targets
     seq = eval_data['seq'].apply(lambda x: list(map(int, x))).tolist()  # Convert to list of integers
     len_seq = eval_data['len_seq'].values
     target = eval_data['next'].values
-
     genre_seq = eval_data['seq_genres'].apply(lambda x: list(map(int, x))).tolist()
     genre_len_seq = eval_data['len_seq'].values
     genre_target = eval_data['target_genre'].values
@@ -670,64 +667,47 @@ def evaluate(model, genre_model, genre_diff, test_data, diff, device):
         seq_batch = torch.LongTensor(seq[i:i + batch_size]).to(device)
         len_seq_batch = torch.LongTensor(len_seq[i:i + batch_size]).to(device)
         target_batch = torch.LongTensor(target[i:i + batch_size]).to(device)
-
         genre_seq_batch = torch.LongTensor(genre_seq[i:i + batch_size]).to(device)
         genre_target_batch = torch.LongTensor(genre_target[i:i + batch_size]).to(device)
-
         x_start = model.cacu_x(target_batch)
         h = model.cacu_h(seq_batch, len_seq_batch, args.p)
-
         n = torch.randint(0, args.timesteps, (h.size(0),), device=device).long()
-
-        # Compute genre embeddings
-        n_g = torch.randint(0, 500, (h.size(0),), device=device).long()
+        n_g = torch.randint(0, 600, (h.size(0),), device=device).long()
         genre_x_start = genre_model.cacu_x(genre_target_batch)
         genre_h = genre_model.cacu_h(genre_seq_batch, len_seq_batch, args.p)
         _, genre_predicted_x = genre_diff.p_losses(genre_model, genre_x_start, genre_h, n_g, loss_type='l2')
 
-        # Predict items
-        noise = torch.randn_like(x_start)
-
-        _, predicted_x = diff.p_losses(model, x_start, h, n, genres_embd=genre_predicted_x, noise=noise, loss_type='l2')
-        noise_level = (n.float() + 1) / args.timesteps  # Scale to [0, 1]
+        loss1, predicted_x = diff.p_losses(model, x_start, h, n, genres_embd=genre_predicted_x, loss_type='l2')
         predicted_items = model.decoder(predicted_x)
-        noise_loss = noise_conditional_loss(predicted_x, noise, noise_level).mean()
-        focal_loss = FocalLoss(alpha=0.5, gamma=2)
-        cross_entropy_loss = focal_loss(model.decoder(predicted_x), target_batch)
-        loss = (args.alpha * noise_loss + (1 - args.alpha) * cross_entropy_loss) / 2
+        focal_loss = FocalLoss(alpha=0.5, gamma=3)
+
+        loss2 = focal_loss(predicted_items, target_batch)
+        loss = loss1 + loss2
         losses.append(loss.item())
 
-        # Get top-k predictions
         prediction = F.softmax(predicted_items, dim=-1)
         _, topK = prediction.topk(20, dim=1, largest=True, sorted=True)
         topK = topK.cpu().detach().numpy()
-
-        # Calculate hit and NDCG metrics using the new function
         calculate_hit(target_batch, topK, topk, hit_purchase, ndcg_purchase)
 
         total_samples += len(target_batch)
 
-    # Calculate averages
-    avg_loss = np.mean(losses)
+    avg_loss = sum(losses) / len(losses)
     hr_list = hit_purchase / total_samples
     ndcg_list = ndcg_purchase / total_samples
 
-    # Print results
     print(f"Average Loss: {avg_loss:.4f}")
     for idx, k in enumerate(topk):
         print(f"HR@{k}: {hr_list[idx]:.4f}, NDCG@{k}: {ndcg_list[idx]:.4f}")
 
-    return avg_loss, hr_list.tolist(), ndcg_list.tolist()
+    return avg_loss, hr_list[0]
 
 
 ##############################################################################
 #                                MAIN SCRIPT                                 #
 ##############################################################################
 if __name__ == '__main__':
-    # Additional hyperparams not in parse_args:
-    args.alpha = 0.8  # weighting factor for diffusion vs. cross-entropy
 
-    # Create a list of possible metrics to tune if needed
     if args.tune:
         from collections import defaultdict
 
@@ -764,13 +744,13 @@ if __name__ == '__main__':
         ]
         best_metrics = []
     else:
-        args.lr = .001
-        args.optimizer = 'adam'
+        args.lr = 0.001
+        args.optimizer = 'adamw'
         args.alpha = 0.8
         metrics = [
             # We test only a single value for timesteps, for example
             # Adjust as needed
-            dict(name='timesteps', values=[500]),
+            dict(name='timesteps', values=[600]),
         ]
         # we can store them in a simpler structure
         best_metrics = []
@@ -812,7 +792,7 @@ if __name__ == '__main__':
             # Load the genre model
             genre_model = Tenc(args.hidden_factor, genres_item_num, genres_seq_size,
                                args.dropout_rate, args.diffuser_type, device)
-            genre_diff = diffusion(500, args.beta_start, args.beta_end, args.w)
+            genre_diff = diffusion(600, args.beta_start, args.beta_end, args.w)
 
             # Load pre-trained
             genre_model, genre_diff = load_genres_predictor(genre_model)
@@ -823,18 +803,17 @@ if __name__ == '__main__':
 
             # Choose optimizer
             if args.optimizer == 'adam':
-                optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, eps=1e-6, weight_decay=args.l2_decay)
+                optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, eps=1e-3, weight_decay=args.l2_decay)
             elif args.optimizer == 'adamw':
-                optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, eps=1e-6, weight_decay=args.l2_decay)
+                optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, eps=1e-3, weight_decay=args.l2_decay)
             elif args.optimizer == 'adagrad':
-                optimizer = torch.optim.Adagrad(model.parameters(), lr=args.lr, eps=1e-6, weight_decay=args.l2_decay)
+                optimizer = torch.optim.Adagrad(model.parameters(), lr=args.lr, eps=1e-3, weight_decay=args.l2_decay)
             elif args.optimizer == 'rmsprop':
                 optimizer = torch.optim.RMSprop(model.parameters(), lr=args.lr, eps=1e-6, weight_decay=args.l2_decay)
             else:
                 optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, eps=1e-6, weight_decay=args.l2_decay)
 
-            scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=3, verbose=True)
-
+            scheduler = lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.7)
             model.to(device)
             genre_model.to(device)
             train_data = pd.read_pickle(os.path.join(data_directory, 'train_data.df'))
@@ -844,11 +823,8 @@ if __name__ == '__main__':
             best_epoch = 0
             early_stopper = EarlyStopper(patience=5, higher_better=True)
             for epoch in range(args.epoch):
-                if epoch < 20:
-                    alpha = 0.8
-                else:
-                    alpha = 0.95
                 start_time = Time.time()
+
                 model.train()
                 for batch_data in train_loader:
                     seq_batch, len_seq_batch, target_batch, genre_seq_batch, genre_target_batch = batch_data
@@ -862,26 +838,22 @@ if __name__ == '__main__':
                     x_start = model.cacu_x(target_batch)
                     n = torch.randint(0, args.timesteps, (seq_batch.shape[0],), device=device).long()
                     h = model.cacu_h(seq_batch, len_seq_batch, args.p)
-                    n_g = torch.randint(0, 500, (seq_batch.shape[0],), device=device).long()
+                    n_g = torch.randint(0, 600, (seq_batch.shape[0],), device=device).long()
                     genre_x_start = genre_model.cacu_x(genre_target_batch)
                     genre_h = genre_model.cacu_h(genre_seq_batch, len_seq_batch, args.p)
                     _, genre_predicted_x = genre_diff.p_losses(
                         genre_model, genre_x_start, genre_h, n_g, loss_type='l2'
                     )
 
-                    # diffusion + cross-entropy
-                    noise = torch.randn_like(x_start)
-
-                    _, predicted_x = diff.p_losses(model, x_start, h, n, genres_embd=genre_predicted_x, noise=noise,
-                                                   loss_type='l2')
-                    noise_level = (n.float() + 1) / args.timesteps
+                    ###############
+                    loss1, predicted_x = diff.p_losses(model, x_start, h, n, genres_embd=genre_predicted_x,
+                                                       loss_type='l2')
                     predicted_items = model.decoder(predicted_x)
-                    noise_conditional_loss = NoiseConditionalScoreLoss()
+                    focal_loss = FocalLoss(alpha=0.5, gamma=3)
+                    loss2 = focal_loss(predicted_items, target_batch)
+                    loss = loss1 + loss2
 
-                    noise_loss = noise_conditional_loss(predicted_x, noise, noise_level).mean()
-                    focal_loss = FocalLoss(alpha=0.5, gamma=2)
-                    cross_entropy_loss = focal_loss(model.decoder(predicted_x), target_batch)
-                    loss = (args.alpha * noise_loss + (1 - args.alpha) * cross_entropy_loss) / 2
+                    ################
                     loss.backward()
                     optimizer.step()
 
@@ -897,13 +869,14 @@ if __name__ == '__main__':
 
                 if (epoch + 1) % 10 == 0:
                     eval_start = Time.time()
+
                     model.eval()
+                    genre_model.eval()
                     with torch.no_grad():
                         print('-------------------------- VAL PHASE --------------------------')
-                        avg_loss, hr_val, ndcg_val = evaluate(model, genre_model, genre_diff, 'val_data.df', diff,
-                                                              device)
+                        avg_loss, hr_val, = evaluate(model, genre_model, genre_diff, 'val_data.df', diff, device)
                         print('-------------------------- TEST PHASE -------------------------')
-                        _, hr_test, _ = evaluate(model, genre_model, genre_diff, 'val_data.df', diff, device)
+                        _, hr_test = evaluate(model, genre_model, genre_diff, 'val_data.df', diff, device)
 
                         print("Evaluation cost: " + Time.strftime(
                             "%H: %M: %S", Time.gmtime(Time.time() - eval_start))
@@ -918,4 +891,3 @@ if __name__ == '__main__':
                         if not args.tune:
                             torch.save(model.state_dict(), f"./models/tencV{epoch}.pth")
                             torch.save(diff, f"./models/diffV{epoch}.pth")
-    print("All done!")
