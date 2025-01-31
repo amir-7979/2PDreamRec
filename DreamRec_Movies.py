@@ -10,13 +10,8 @@ import torch.optim.lr_scheduler as lr_scheduler
 import os
 import logging
 import time as Time
-
-# Torch Data Utilities
 from torch.utils.data import Dataset, DataLoader
-
-# Local utility functions (must be in same directory)
 from utility import pad_history, calculate_hit, extract_axis_1
-# Local modules (your original multi-head attention, feed-forward, etc.)
 from Modules_ori import MultiHeadAttention, PositionwiseFeedForward
 
 logging.getLogger().setLevel(logging.INFO)
@@ -27,10 +22,8 @@ logging.getLogger().setLevel(logging.INFO)
 ##############################################################################
 def parse_args():
     parser = argparse.ArgumentParser(description="Run DreamRec with Diffusion + Cross-Entropy.")
-
     parser.add_argument('--tune', action='store_true', default=False, help='Enable tuning.')
     parser.add_argument('--no-tune', action='store_false', dest='tune', help='Disable tuning.')
-
     parser.add_argument('--epoch', type=int, default=100,
                         help='Number of max epochs.')
     parser.add_argument('--data', nargs='?', default='yc',
@@ -141,8 +134,6 @@ class diffusion():
         self.beta_start = beta_start
         self.beta_end = beta_end
         self.w = w
-
-        # Choose schedule
         if args.beta_sche == 'linear':
             self.betas = linear_beta_schedule(timesteps=self.timesteps,
                                               beta_start=self.beta_start,
@@ -157,18 +148,14 @@ class diffusion():
                 lambda t: 1 - np.sqrt(t + 0.0001)
             )).float()
 
-        # define alphas
         self.alphas = 1. - self.betas
         self.alphas_cumprod = torch.cumprod(self.alphas, axis=0)
         self.alphas_cumprod_prev = F.pad(self.alphas_cumprod[:-1], (1, 0), value=1.0)
         self.sqrt_recip_alphas = torch.sqrt(1.0 / self.alphas)
-
-        # calculations
         self.sqrt_alphas_cumprod = torch.sqrt(self.alphas_cumprod)
         self.sqrt_one_minus_alphas_cumprod = torch.sqrt(1. - self.alphas_cumprod)
         self.sqrt_recip_alphas_cumprod = torch.sqrt(1. / self.alphas_cumprod)
         self.sqrt_recipm1_alphas_cumprod = torch.sqrt(1. / self.alphas_cumprod - 1)
-
         self.posterior_mean_coef1 = self.betas * torch.sqrt(self.alphas_cumprod_prev) / (1. - self.alphas_cumprod)
         self.posterior_mean_coef2 = (1. - self.alphas_cumprod_prev) * torch.sqrt(self.alphas) / (
                     1. - self.alphas_cumprod)
@@ -308,23 +295,18 @@ class Tenc(nn.Module):
         self.dropout = nn.Dropout(dropout)
         self.diffuser_type = diffuser_type
         self.device = device
-
         self.item_embeddings = nn.Embedding(num_embeddings=item_num + 1, embedding_dim=hidden_size)
         nn.init.normal_(self.item_embeddings.weight, 0, 1)
-
         self.none_embedding = nn.Embedding(num_embeddings=1, embedding_dim=self.hidden_size)
         nn.init.normal_(self.none_embedding.weight, 0, 1)
-
         self.positional_embeddings = nn.Embedding(num_embeddings=state_size, embedding_dim=hidden_size)
         self.emb_dropout = nn.Dropout(dropout)
-
         self.ln_1 = nn.LayerNorm(hidden_size)
         self.ln_2 = nn.LayerNorm(hidden_size)
         self.ln_3 = nn.LayerNorm(hidden_size)
         self.mh_attn = MultiHeadAttention(hidden_size, hidden_size, num_heads, dropout)
         self.feed_forward = PositionwiseFeedForward(hidden_size, hidden_size, dropout)
         self.s_fc = nn.Linear(hidden_size, item_num)
-
         self.step_mlp = nn.Sequential(
             SinusoidalPositionEmbeddings(self.hidden_size),
             nn.Linear(self.hidden_size, self.hidden_size * 2),
@@ -386,8 +368,6 @@ class Tenc(nn.Module):
         ff_out = self.ln_3(ff_out)
         state_hidden = extract_axis_1(ff_out, len_states - 1)
         h = state_hidden.squeeze()
-
-        # random dropout in cacu_h
         B, D = h.shape[0], h.shape[1]
         mask1d = (torch.sign(torch.rand(B) - p) + 1) / 2
         maske1d = mask1d.view(B, 1)
@@ -460,7 +440,6 @@ class MovieTenc(Tenc):
             nn.Linear(self.hidden_size * 2, self.hidden_size),
         )
 
-        # Diffuser
         if self.diffuser_type == 'mlp1':
             self.diffuser = nn.Sequential(
                 nn.Linear(self.hidden_size * 4, self.hidden_size)
@@ -544,35 +523,6 @@ def one_hot_encoding(target, item_num):
 
 
 ##############################################################################
-#                    SIMPLE EARLY STOPPING IMPLEMENTATION                    #
-##############################################################################
-class EarlyStopper:
-    def __init__(self, patience=5, higher_better=True):
-        self.patience = patience
-        self.counter = 0
-        self.best_score = None
-        self.higher_better = higher_better
-
-    def should_stop(self, metric):
-        """Return True if we need to stop based on 'metric'."""
-        if self.best_score is None:
-            self.best_score = metric
-            return False
-
-        # Determine if we improved
-        improved = (metric > self.best_score) if self.higher_better else (metric < self.best_score)
-        if improved:
-            self.best_score = metric
-            self.counter = 0
-            return False
-        else:
-            self.counter += 1
-            if self.counter >= self.patience:
-                return True
-            return False
-
-
-##############################################################################
 #                       DATASET & DATALOADER FOR TRAINING                    #
 ##############################################################################
 class RecDataset(Dataset):
@@ -629,19 +579,6 @@ class LabelSmoothingCrossEntropy(nn.Module):
         smooth_labels.scatter_(1, target.unsqueeze(1), 1.0 - self.smoothing)
         log_probs = F.log_softmax(pred, dim=1)
         return -(smooth_labels * log_probs).sum(dim=1).mean()
-
-
-##############################################################################
-#                                Loss                                 #
-##############################################################################
-class NoiseConditionalScoreLoss(nn.Module):
-    def __init__(self):
-        super(NoiseConditionalScoreLoss, self).__init__()
-
-    def forward(self, predicted_score, true_score, noise_level):
-        # Weight loss by noise level
-        loss = noise_level * F.mse_loss(predicted_score, true_score)
-        return loss
 
 
 ##############################################################################
@@ -746,25 +683,17 @@ if __name__ == '__main__':
     else:
         args.lr = 0.001
         args.optimizer = 'adamw'
-        args.alpha = 0.8
         metrics = [
-            # We test only a single value for timesteps, for example
-            # Adjust as needed
             dict(name='timesteps', values=[600]),
         ]
-        # we can store them in a simpler structure
         best_metrics = []
 
     os.environ["CUDA_VISIBLE_DEVICES"] = str(args.cuda)
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     data_directory = './data/' + args.data
 
-    # We'll just do a single run if not tuning
     for metric in metrics:
-        # Possibly read bestOne from a previous step. Omitted for brevity.
-
         for value in metric['values']:
-            # set the appropriate param
             if metric['name'] == 'lr':
                 args.lr = value
             elif metric['name'] == 'optimizer':
@@ -773,31 +702,20 @@ if __name__ == '__main__':
                 args.timesteps = value
             elif metric['name'] == 'alpha':
                 args.alpha = value
-
-            # read stats
             data_statis = pd.read_pickle(os.path.join(data_directory, 'data_statis.df'))
             seq_size = data_statis['seq_size'][0]
             item_num = data_statis['item_num'][0]
-
-            # read genre stats
             genres_data_statis = pd.read_pickle(os.path.join(data_directory, 'data_statis_g.df'))
             genres_seq_size = genres_data_statis['seq_size'][0]
             genres_item_num = genres_data_statis['item_num'][0]
-
-            # Construct model & diffusion
             model = MovieTenc(args.hidden_factor, item_num, seq_size, args.dropout_rate,
                               args.diffuser_type, device)
             diff = MovieDiffusion(args.timesteps, args.beta_start, args.beta_end, args.w)
-
-            # Load the genre model
             genre_model = Tenc(args.hidden_factor, genres_item_num, genres_seq_size,
                                args.dropout_rate, args.diffuser_type, device)
             genre_diff = diffusion(600, args.beta_start, args.beta_end, args.w)
-
-            # Load pre-trained
             genre_model, genre_diff = load_genres_predictor(genre_model)
             genre_model.eval()
-            # freeze genre model
             for param in genre_model.parameters():
                 param.requires_grad = False
 
@@ -809,7 +727,7 @@ if __name__ == '__main__':
             elif args.optimizer == 'adagrad':
                 optimizer = torch.optim.Adagrad(model.parameters(), lr=args.lr, eps=1e-3, weight_decay=args.l2_decay)
             elif args.optimizer == 'rmsprop':
-                optimizer = torch.optim.RMSprop(model.parameters(), lr=args.lr, eps=1e-6, weight_decay=args.l2_decay)
+                optimizer = torch.optim.RMSprop(model.parameters(), lr=args.lr, eps=1e-3, weight_decay=args.l2_decay)
             else:
                 optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, eps=1e-6, weight_decay=args.l2_decay)
 
@@ -821,10 +739,8 @@ if __name__ == '__main__':
             train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
             hr_max = 0
             best_epoch = 0
-            early_stopper = EarlyStopper(patience=5, higher_better=True)
             for epoch in range(args.epoch):
                 start_time = Time.time()
-
                 model.train()
                 for batch_data in train_loader:
                     seq_batch, len_seq_batch, target_batch, genre_seq_batch, genre_target_batch = batch_data
@@ -842,23 +758,15 @@ if __name__ == '__main__':
                     genre_x_start = genre_model.cacu_x(genre_target_batch)
                     genre_h = genre_model.cacu_h(genre_seq_batch, len_seq_batch, args.p)
                     _, genre_predicted_x = genre_diff.p_losses(
-                        genre_model, genre_x_start, genre_h, n_g, loss_type='l2'
-                    )
-
-                    ###############
+                        genre_model, genre_x_start, genre_h, n_g, loss_type='l2')
                     loss1, predicted_x = diff.p_losses(model, x_start, h, n, genres_embd=genre_predicted_x,
                                                        loss_type='l2')
                     predicted_items = model.decoder(predicted_x)
                     focal_loss = FocalLoss(alpha=0.5, gamma=3)
                     loss2 = focal_loss(predicted_items, target_batch)
                     loss = loss1 + loss2
-
-                    ################
                     loss.backward()
                     optimizer.step()
-
-                # optional: scheduler.step() at each epoch
-                # scheduler.step()
 
                 if args.report_epoch:
                     if epoch % 1 == 0:
@@ -869,7 +777,6 @@ if __name__ == '__main__':
 
                 if (epoch + 1) % 10 == 0:
                     eval_start = Time.time()
-
                     model.eval()
                     genre_model.eval()
                     with torch.no_grad():
@@ -877,17 +784,10 @@ if __name__ == '__main__':
                         avg_loss, hr_val, = evaluate(model, genre_model, genre_diff, 'val_data.df', diff, device)
                         print('-------------------------- TEST PHASE -------------------------')
                         _, hr_test = evaluate(model, genre_model, genre_diff, 'val_data.df', diff, device)
-
                         print("Evaluation cost: " + Time.strftime(
                             "%H: %M: %S", Time.gmtime(Time.time() - eval_start))
                               )
                         print('----------------------------------------------------------------')
-                        scheduler.step(avg_loss)
-
-                        if early_stopper.should_stop(hr_val):
-                            print(f"Early stopping triggered at epoch {epoch}")
-                            break
-
                         if not args.tune:
                             torch.save(model.state_dict(), f"./models/tencV{epoch}.pth")
                             torch.save(diff, f"./models/diffV{epoch}.pth")
