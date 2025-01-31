@@ -750,7 +750,6 @@ if __name__ == '__main__':
                     genre_seq_batch = genre_seq_batch.to(device)
                     genre_target_batch = genre_target_batch.to(device)
                     optimizer.zero_grad()
-
                     x_start = model.cacu_x(target_batch)
                     n = torch.randint(0, args.timesteps, (seq_batch.shape[0],), device=device).long()
                     h = model.cacu_h(seq_batch, len_seq_batch, args.p)
