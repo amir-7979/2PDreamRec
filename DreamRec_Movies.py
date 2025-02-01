@@ -13,6 +13,7 @@ import time as Time
 from torch.utils.data import Dataset, DataLoader
 from utility import pad_history, calculate_hit, extract_axis_1
 from Modules_ori import MultiHeadAttention, PositionwiseFeedForward
+from collections import defaultdict
 
 logging.getLogger().setLevel(logging.INFO)
 
@@ -158,7 +159,7 @@ class diffusion():
         self.sqrt_recipm1_alphas_cumprod = torch.sqrt(1. / self.alphas_cumprod - 1)
         self.posterior_mean_coef1 = self.betas * torch.sqrt(self.alphas_cumprod_prev) / (1. - self.alphas_cumprod)
         self.posterior_mean_coef2 = (1. - self.alphas_cumprod_prev) * torch.sqrt(self.alphas) / (
-                    1. - self.alphas_cumprod)
+                1. - self.alphas_cumprod)
         self.posterior_variance = self.betas * (1. - self.alphas_cumprod_prev) / (1. - self.alphas_cumprod)
 
     def q_sample(self, x_start, t, noise=None):
@@ -522,6 +523,30 @@ def one_hot_encoding(target, item_num):
     return encoded_target
 
 
+class Metric:
+    def __init__(self, name, values):
+        self.name = name
+        self.values = values
+        self.eval_dict = defaultdict(list)
+        self.bestOne = None
+
+    def find_max_one(self):
+        best = -np.inf
+        for key in self.eval_dict.keys():
+            temp = max(self.eval_dict[key])
+            if temp > best:
+                self.bestOne = key
+                best = temp
+
+    def find_min_one(self):
+        best = np.inf
+        for key in self.eval_dict.keys():
+            temp = min(self.eval_dict[key])
+            if temp < best:
+                self.bestOne = key
+                best = temp
+
+
 ##############################################################################
 #                       DATASET & DATALOADER FOR TRAINING                    #
 ##############################################################################
@@ -644,70 +669,57 @@ def evaluate(model, genre_model, genre_diff, test_data, diff, device):
 #                                MAIN SCRIPT                                 #
 ##############################################################################
 if __name__ == '__main__':
-
+    # --- Define metrics to tune if tuning is enabled ---
     if args.tune:
-        from collections import defaultdict
-
-
-        class Metric:
-            def __init__(self, name, values):
-                self.name = name
-                self.values = values
-                self.eval_dict = defaultdict(list)
-                self.bestOne = None
-
-            def find_max_one(self):
-                best = -np.inf
-                for key in self.eval_dict.keys():
-                    temp = max(self.eval_dict[key])
-                    if temp > best:
-                        self.bestOne = key
-                        best = temp
-
-            def find_min_one(self):
-                best = np.inf
-                for key in self.eval_dict.keys():
-                    temp = min(self.eval_dict[key])
-                    if temp < best:
-                        self.bestOne = key
-                        best = temp
-
-
         metrics = [
-            Metric(name='timesteps', values=[i * 100 for i in range(1, 11)]),
             Metric(name='lr', values=[0.1, 0.01, 0.001, 0.0001, 0.00001]),
             Metric(name='optimizer', values=['adam', 'adamw', 'adagrad', 'rmsprop']),
-            Metric(name='alpha', values=[i * 0.05 for i in range(1, 21)])
+            Metric(name='timesteps', values=[i * 100 for i in range(1, 11)]),
         ]
         best_metrics = []
     else:
         args.lr = 0.001
         args.optimizer = 'adamw'
-        metrics = [
-            dict(name='timesteps', values=[600]),
-        ]
+        metrics = [Metric(name='timesteps', values=[600])]
         best_metrics = []
+
+    # --- If any best parameters were previously determined, load them ---
+    for metric in metrics:
+        if metric.bestOne is not None:
+            if metric.name == 'lr':
+                args.lr = metric.bestOne
+                print(f'Best Learning Rate: {args.lr}')
+            elif metric.name == 'optimizer':
+                args.optimizer = metric.bestOne
+                print(f'Best Optimizer: {args.optimizer}')
+            elif metric.name == 'timesteps':
+                args.timesteps = metric.bestOne
+                print(f'Best Timesteps: {args.timesteps}')
 
     os.environ["CUDA_VISIBLE_DEVICES"] = str(args.cuda)
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     data_directory = './data/' + args.data
 
+    # --- Outer loop: iterate over each metric and its possible values ---
     for metric in metrics:
-        for value in metric['values']:
-            if metric['name'] == 'lr':
+        for value in metric.values:
+            if metric.name == 'lr':
                 args.lr = value
-            elif metric['name'] == 'optimizer':
+            elif metric.name == 'optimizer':
                 args.optimizer = value
-            elif metric['name'] == 'timesteps':
+            elif metric.name == 'timesteps':
                 args.timesteps = value
-            elif metric['name'] == 'alpha':
-                args.alpha = value
+            # (Add any additional hyperparameters here if needed)
+
+            # --- Load data statistics ---
             data_statis = pd.read_pickle(os.path.join(data_directory, 'data_statis.df'))
             seq_size = data_statis['seq_size'][0]
             item_num = data_statis['item_num'][0]
             genres_data_statis = pd.read_pickle(os.path.join(data_directory, 'data_statis_g.df'))
             genres_seq_size = genres_data_statis['seq_size'][0]
             genres_item_num = genres_data_statis['item_num'][0]
+
+            # --- Initialize models and diffusion objects ---
             model = MovieTenc(args.hidden_factor, item_num, seq_size, args.dropout_rate,
                               args.diffuser_type, device)
             diff = MovieDiffusion(args.timesteps, args.beta_start, args.beta_end, args.w)
@@ -719,7 +731,9 @@ if __name__ == '__main__':
             for param in genre_model.parameters():
                 param.requires_grad = False
 
-            # Choose optimizer
+            model.to(device)
+            genre_model.to(device)
+            # --- Choose optimizer based on current hyperparameter ---
             if args.optimizer == 'adam':
                 optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, eps=1e-3, weight_decay=args.l2_decay)
             elif args.optimizer == 'adamw':
@@ -732,13 +746,14 @@ if __name__ == '__main__':
                 optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, eps=1e-6, weight_decay=args.l2_decay)
 
             scheduler = lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.7)
-            model.to(device)
-            genre_model.to(device)
+
             train_data = pd.read_pickle(os.path.join(data_directory, 'train_data.df'))
             train_dataset = RecDataset(train_data)
             train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
             hr_max = 0
             best_epoch = 0
+
+            # --- Training loop ---
             for epoch in range(args.epoch):
                 start_time = Time.time()
                 model.train()
@@ -768,11 +783,10 @@ if __name__ == '__main__':
                     optimizer.step()
 
                 if args.report_epoch:
-                    if epoch % 1 == 0:
-                        print("Epoch {:03d}; Train loss: {:.4f}; Time: {}".format(
-                            epoch, loss.item(),
-                            Time.strftime("%H: %M: %S", Time.gmtime(Time.time() - start_time))
-                        ))
+                    print("Epoch {:03d}; Train loss: {:.4f}; Time: {}".format(
+                        epoch, loss.item(),
+                        Time.strftime("%H: %M: %S", Time.gmtime(Time.time() - start_time))
+                    ))
 
                 if (epoch + 1) % 10 == 0:
                     eval_start = Time.time()
@@ -780,13 +794,25 @@ if __name__ == '__main__':
                     genre_model.eval()
                     with torch.no_grad():
                         print('-------------------------- VAL PHASE --------------------------')
-                        avg_loss, hr_val, = evaluate(model, genre_model, genre_diff, 'val_data.df', diff, device)
+                        avg_loss, hr_val = evaluate(model, genre_model, genre_diff, 'val_data.df', diff, device)
                         print('-------------------------- TEST PHASE -------------------------')
                         _, hr_test = evaluate(model, genre_model, genre_diff, 'val_data.df', diff, device)
                         print("Evaluation cost: " + Time.strftime(
                             "%H: %M: %S", Time.gmtime(Time.time() - eval_start))
                               )
                         print('----------------------------------------------------------------')
+                        # Record the metric for the current hyperparameter value
+                        metric.eval_dict[value].append(hr_val)
                         if not args.tune:
                             torch.save(model.state_dict(), f"./models/tencV{epoch}.pth")
                             torch.save(diff, f"./models/diffV{epoch}.pth")
+            # End of training for the current hyperparameter value
+
+            # If tuning, determine the best value for this metric and store it.
+            if args.tune:
+                metric.find_max_one()
+                best_metrics.append(metric)
+    # End of hyperparameter loop
+
+    if args.tune:
+        torch.save(best_metrics, './tune/metrics_m.dict')
