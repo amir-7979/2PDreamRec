@@ -14,6 +14,7 @@ from torch.utils.data import Dataset, DataLoader
 from utility import pad_history, calculate_hit, extract_axis_1
 from Modules_ori import MultiHeadAttention, PositionwiseFeedForward
 from collections import defaultdict
+from tqdm import tqdm
 
 logging.getLogger().setLevel(logging.INFO)
 
@@ -680,21 +681,8 @@ if __name__ == '__main__':
     else:
         args.lr = 0.001
         args.optimizer = 'adamw'
-        metrics = [Metric(name='timesteps', values=[600])]
+        metrics = [Metric(name='timesteps', values=[100])]
         best_metrics = []
-
-    # --- If any best parameters were previously determined, load them ---
-    for metric in metrics:
-        if metric.bestOne is not None:
-            if metric.name == 'lr':
-                args.lr = metric.bestOne
-                print(f'Best Learning Rate: {args.lr}')
-            elif metric.name == 'optimizer':
-                args.optimizer = metric.bestOne
-                print(f'Best Optimizer: {args.optimizer}')
-            elif metric.name == 'timesteps':
-                args.timesteps = metric.bestOne
-                print(f'Best Timesteps: {args.timesteps}')
 
     os.environ["CUDA_VISIBLE_DEVICES"] = str(args.cuda)
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -702,7 +690,19 @@ if __name__ == '__main__':
 
     # --- Outer loop: iterate over each metric and its possible values ---
     for metric in metrics:
-        for value in metric.values:
+        for b_m in metrics:
+            if b_m.bestOne is not None:
+                if b_m.name == 'lr':
+                    args.lr = b_m.bestOne
+                    print(f'Learning Rate: {args.lr}')
+                elif b_m.name == 'optimizer':
+                    args.optimizer = b_m.bestOne
+                    print(f'Optimizer: {args.optimizer}')
+                elif b_m.name == 'timesteps':
+                    args.timesteps = b_m.bestOne
+                    print(f'Timesteps: {args.timesteps}')
+
+        for value in tqdm(metric.values):
             if metric.name == 'lr':
                 args.lr = value
             elif metric.name == 'optimizer':
