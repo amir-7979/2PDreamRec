@@ -438,17 +438,15 @@ def evaluate(model, test_data, diff, device):
     hr_list = []
     ndcg_list = []
     print('{:<10s} {:<10s} {:<10s} {:<10s} {:<10s} {:<10s}'.format('HR@' + str(topk[0]), 'NDCG@' + str(topk[0]),
-                                                                   'HR@' + str(topk[1]), 'NDCG@' + str(topk[1]),
-                                                                   'HR@' + str(topk[2]), 'NDCG@' + str(topk[2])))
+                                                                   'HR@' + str(topk[1]), 'NDCG@' + str(topk[1])))
     for i in range(len(topk)):
         hr_purchase = hit_purchase[i] / total_purchase
         ng_purchase = ndcg_purchase[i] / total_purchase
         hr_list.append(hr_purchase)
         ndcg_list.append(ng_purchase)
 
-    print('{:<10.6f} {:<10.6f} {:<10.6f} {:<10.6f} {:<10.6f} {:<10.6f}'.format(hr_list[0], (ndcg_list[0]), hr_list[1],
-                                                                               (ndcg_list[1]), hr_list[2],
-                                                                               (ndcg_list[2])))
+    print('{:<10.6f} {:<10.6f} {:<10.6f} {:<10.6f}'.format(hr_list[0], (ndcg_list[0]), hr_list[1],
+                                                                               (ndcg_list[1])))
     print(f'loss:{sum(losses) / len(losses)}')
 
     return sum(losses) / len(losses), hr_list[0]

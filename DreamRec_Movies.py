@@ -510,7 +510,7 @@ class MovieTenc(Tenc):
 ##############################################################################
 #                  LOAD GENRES MODEL                   #
 ##############################################################################
-def load_genres_predictor(tenc, tenc_path='models/tencVG79.pth', diff_path='models/diffVG79.pth'):
+def load_genres_predictor(tenc, tenc_path='models/tencVG89.pth', diff_path='models/diffVG89.pth'):
     tenc.load_state_dict(torch.load(tenc_path))
     diff = torch.load(diff_path)
     return tenc, diff
@@ -642,10 +642,10 @@ def evaluate(model, genre_model, genre_diff, test_data, diff, device):
 
         loss1, predicted_x = diff.p_losses(model, x_start, h, n, genres_embd=genre_predicted_x, loss_type='l2')
         predicted_items = model.decoder(predicted_x)
-        focal_loss = FocalLoss(alpha=0.17, gamma=9)
+        focal_loss = FocalLoss(alpha=0.2, gamma=6.5)
 
         loss2 = focal_loss(predicted_items, target_batch)
-        loss = (loss1 + loss2)/2
+        loss = (loss1 + loss2) / 2
         losses.append(loss.item())
 
         prediction = F.softmax(predicted_items, dim=-1)
@@ -658,10 +658,10 @@ def evaluate(model, genre_model, genre_diff, test_data, diff, device):
     avg_loss = sum(losses) / len(losses)
     hr_list = hit_purchase / total_samples
     ndcg_list = ndcg_purchase / total_samples
-
-    print(f"Average Loss: {avg_loss:.4f}")
-    for idx, k in enumerate(topk):
-        print(f"HR@{k}: {hr_list[idx]:.4f}, NDCG@{k}: {ndcg_list[idx]:.4f}")
+    print('{:<10s} {:<10s} {:<10s} {:<10s}'.format('HR@' + str(topk[0]), 'NDCG@' + str(topk[0]),
+                                                   'HR@' + str(topk[1]), 'NDCG@' + str(topk[1])))
+    print('{:<10.6f} {:<10.6f} {:<10.6f} {:<10.6f}'.format(hr_list[0], (ndcg_list[0]), hr_list[1], (ndcg_list[1])))
+    print(f'loss:{sum(losses) / len(losses)}')
 
     return avg_loss, ndcg_list[0]
 
@@ -776,9 +776,9 @@ if __name__ == '__main__':
                     loss1, predicted_x = diff.p_losses(model, x_start, h, n, genres_embd=genre_predicted_x,
                                                        loss_type='l2')
                     predicted_items = model.decoder(predicted_x)
-                    focal_loss = FocalLoss(alpha=0.17, gamma=6)
+                    focal_loss = FocalLoss(alpha=0.2, gamma=6.5)
                     loss2 = focal_loss(predicted_items, target_batch)
-                    loss = (loss1 + loss2)/2
+                    loss = (loss1 + loss2) / 2
                     loss.backward()
                     optimizer.step()
 
