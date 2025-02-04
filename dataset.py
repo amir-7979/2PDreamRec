@@ -158,7 +158,6 @@ if __name__ == "__main__":
     # Prepare data for training using improved time-based splitting
     train_data, val_data, test_data, train_genres, val_genres, test_genres, train_targets, val_targets, test_targets = time_based_split(
         filtered_data)
-
     # Save processed data
     split_and_save(train_data, val_data, test_data, train_genres, val_genres, test_genres, train_targets, val_targets,
                    test_targets, "movie_data")
