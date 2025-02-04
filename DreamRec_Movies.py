@@ -808,7 +808,6 @@ if __name__ == '__main__':
                             torch.save(diff, f"./models/diffV{epoch}.pth")
             # End of training for the current hyperparameter value
 
-            # If tuning, determine the best value for this metric and store it.
             if args.tune:
                 metric.find_max_one()
                 best_metrics.append(metric)
