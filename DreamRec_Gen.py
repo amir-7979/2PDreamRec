@@ -437,7 +437,7 @@ def evaluate(model, test_data, diff, device):
 
     hr_list = []
     ndcg_list = []
-    print('{:<10s} {:<10s} {:<10s} {:<10s} {:<10s} {:<10s}'.format('HR@' + str(topk[0]), 'NDCG@' + str(topk[0]),
+    print('{:<10s} {:<10s} {:<10s} {:<10s}'.format('HR@' + str(topk[0]), 'NDCG@' + str(topk[0]),
                                                                    'HR@' + str(topk[1]), 'NDCG@' + str(topk[1])))
     for i in range(len(topk)):
         hr_purchase = hit_purchase[i] / total_purchase
