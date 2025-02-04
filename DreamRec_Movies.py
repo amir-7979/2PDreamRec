@@ -614,7 +614,7 @@ class LabelSmoothingCrossEntropy(nn.Module):
 def evaluate(model, genre_model, genre_diff, test_data, diff, device):
     eval_data = pd.read_pickle(os.path.join(data_directory, test_data))
     batch_size = args.batch_size
-    topk = [5, 10, 20]
+    topk = [5, 10]
     total_samples = 0
     hit_purchase = np.zeros(len(topk))
     ndcg_purchase = np.zeros(len(topk))
@@ -642,14 +642,14 @@ def evaluate(model, genre_model, genre_diff, test_data, diff, device):
 
         loss1, predicted_x = diff.p_losses(model, x_start, h, n, genres_embd=genre_predicted_x, loss_type='l2')
         predicted_items = model.decoder(predicted_x)
-        focal_loss = FocalLoss(alpha=0.5, gamma=3)
+        focal_loss = FocalLoss(alpha=0.17, gamma=9)
 
         loss2 = focal_loss(predicted_items, target_batch)
-        loss = loss1 + loss2
+        loss = (loss1 + loss2)/2
         losses.append(loss.item())
 
         prediction = F.softmax(predicted_items, dim=-1)
-        _, topK = prediction.topk(20, dim=1, largest=True, sorted=True)
+        _, topK = prediction.topk(10, dim=1, largest=True, sorted=True)
         topK = topK.cpu().detach().numpy()
         calculate_hit(target_batch, topK, topk, hit_purchase, ndcg_purchase)
 
@@ -663,7 +663,7 @@ def evaluate(model, genre_model, genre_diff, test_data, diff, device):
     for idx, k in enumerate(topk):
         print(f"HR@{k}: {hr_list[idx]:.4f}, NDCG@{k}: {ndcg_list[idx]:.4f}")
 
-    return avg_loss, hr_list[0]
+    return avg_loss, ndcg_list[0]
 
 
 ##############################################################################
@@ -776,9 +776,9 @@ if __name__ == '__main__':
                     loss1, predicted_x = diff.p_losses(model, x_start, h, n, genres_embd=genre_predicted_x,
                                                        loss_type='l2')
                     predicted_items = model.decoder(predicted_x)
-                    focal_loss = FocalLoss(alpha=0.5, gamma=3)
+                    focal_loss = FocalLoss(alpha=0.17, gamma=6)
                     loss2 = focal_loss(predicted_items, target_batch)
-                    loss = loss1 + loss2
+                    loss = (loss1 + loss2)/2
                     loss.backward()
                     optimizer.step()
 
