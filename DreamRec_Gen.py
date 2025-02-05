@@ -449,7 +449,7 @@ def evaluate(model, test_data, diff, device):
                                                                                (ndcg_list[1])))
     print(f'loss:{sum(losses) / len(losses)}')
 
-    return sum(losses) / len(losses), ndcg_list[0]
+    return sum(losses) / len(losses), hr_list[0]
 
 
 import numpy as np
