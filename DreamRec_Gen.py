@@ -491,10 +491,10 @@ if __name__ == '__main__':
         ]
         best_metrics = list()
     else:
-        args.lr = 0.001
-        args.optimizer = 'adam'
+        args.lr = 0.0001
+        args.optimizer = 'adagrad'
         metrics = [
-            Metric(name='timesteps', values=[600]),
+            Metric(name='timesteps', values=[400]),
         ]
 
     for metric in metrics:
