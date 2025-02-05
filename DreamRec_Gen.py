@@ -491,10 +491,10 @@ if __name__ == '__main__':
         ]
         best_metrics = list()
     else:
-        args.lr = 0.0001
-        args.optimizer = 'adagrad'
+        args.lr = 0.001
+        args.optimizer = 'adam'
         metrics = [
-            Metric(name='timesteps', values=[400]),
+            Metric(name='timesteps', values=[600]),
         ]
 
     for metric in metrics:
@@ -537,14 +537,14 @@ if __name__ == '__main__':
             diff = diffusion(args.timesteps, args.beta_start, args.beta_end, args.w)
 
             if args.optimizer == 'adam':
-                optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, eps=1e-8, weight_decay=args.l2_decay)
+                optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, eps=1e-6, weight_decay=args.l2_decay)
             elif args.optimizer == 'adamw':
-                optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, eps=1e-8, weight_decay=args.l2_decay)
+                optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, eps=1e-6, weight_decay=args.l2_decay)
             elif args.optimizer == 'adagrad':
                 model.to(device)
-                optimizer = torch.optim.Adagrad(model.parameters(), lr=args.lr, eps=1e-8, weight_decay=args.l2_decay)
+                optimizer = torch.optim.Adagrad(model.parameters(), lr=args.lr, eps=1e-6, weight_decay=args.l2_decay)
             elif args.optimizer == 'rmsprop':
-                optimizer = torch.optim.RMSprop(model.parameters(), lr=args.lr, eps=1e-8, weight_decay=args.l2_decay)
+                optimizer = torch.optim.RMSprop(model.parameters(), lr=args.lr, eps=1e-6, weight_decay=args.l2_decay)
             # scheduler = lr_scheduler.LinearLR(optimizer, start_factor=0.1, end_factor=1, total_iters=20)
             model.to(device)
             # optimizer.to(device)
