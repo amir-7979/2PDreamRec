@@ -449,7 +449,7 @@ def evaluate(model, test_data, diff, device):
                                                                                (ndcg_list[1])))
     print(f'loss:{sum(losses) / len(losses)}')
 
-    return sum(losses) / len(losses), hr_list[0]
+    return sum(losses) / len(losses), ndcg_list[0]
 
 
 import numpy as np
@@ -527,7 +527,7 @@ if __name__ == '__main__':
                              'data_statis_g.df'))  # read data statistics, includeing seq_size and item_num
             seq_size = data_statis['seq_size'][0]  # the length of history to define the seq
             item_num = data_statis['item_num'][0]  # total number of items
-            topk = [5, 10, 20]
+            topk = [5, 10]
 
             device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
             timesteps = args.timesteps
