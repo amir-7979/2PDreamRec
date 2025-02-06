@@ -14,10 +14,13 @@ import torch.nn.functional as F
 
 def extract_axis_1(data, indices):
     res = []
-    for i in range(data.shape[0]):
+    for i in range(data.size(0)):
+        # Log the shape and the index for this sample:
+        if indices[i] >= data.size(1):
+            print(f"Error: For sample {i}, index {indices[i]} out of bounds for tensor shape {data.shape}")
         res.append(data[i, indices[i], :])
-    res = torch.stack(res, dim=0).unsqueeze(1)
-    return res
+    return torch.stack(res, dim=0)
+
 
 
 def to_pickled_df(data_directory, **kwargs):

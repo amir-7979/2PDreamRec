@@ -2,18 +2,29 @@ import os
 import zipfile
 import requests
 import pandas as pd
-import random
+import numpy as np
 from tqdm import tqdm
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import KFold, train_test_split
+import random
 
-# Constants
+# -----------------------------
+# Constants and Directories
+# -----------------------------
 MOVIELENS_URL = "https://files.grouplens.org/datasets/movielens/ml-1m.zip"
 DATA_DIR = "movielens_1m"
 EXTRACTED_DIR = os.path.join(DATA_DIR, "ml-1m")
-OUTPUT_DIR = "Amir"  # Change this if needed
-SEQ_LENGTH = 10  # Max sequence length before splitting target
+OUTPUT_DIR = "data"  # Directory for merged nested fold data
+
+# Define sequence lengths:
+RAW_SEQ_LENGTH = 11  # Total number of interactions extracted (including target)
+TRAIN_SEQ_LENGTH = RAW_SEQ_LENGTH - 1  # The training sequence length (i.e. without target)
+
+N_FOLDS = 10  # Number of outer folds for nested CV
 
 
+# -----------------------------
+# Download and Extraction
+# -----------------------------
 def download_and_extract():
     """Download and extract the MovieLens dataset if not already available."""
     zip_path = os.path.join(DATA_DIR, "ml-1m.zip")
@@ -26,140 +37,169 @@ def download_and_extract():
                 if chunk:
                     file.write(chunk)
         print("Download complete!")
-
     with zipfile.ZipFile(zip_path, "r") as zip_ref:
         zip_ref.extractall(DATA_DIR)
     print("Extraction complete!")
 
 
+# -----------------------------
+# Data Loading and Filtering
+# -----------------------------
 def load_data():
-    """Load ratings and movie metadata."""
+    """Load ratings and movie metadata and merge them."""
     ratings_path = os.path.join(EXTRACTED_DIR, "ratings.dat")
     movies_path = os.path.join(EXTRACTED_DIR, "movies.dat")
-
     ratings = pd.read_csv(ratings_path, sep="::", engine="python",
-                          names=["userId", "movieId", "rating", "timestamp"], encoding="ISO-8859-1")
-
+                          names=["userId", "movieId", "rating", "timestamp"],
+                          encoding="ISO-8859-1")
     movies = pd.read_csv(movies_path, sep="::", engine="python",
-                         names=["movieId", "title", "genres"], encoding="ISO-8859-1")
-
+                         names=["movieId", "title", "genres"],
+                         encoding="ISO-8859-1")
     return pd.merge(ratings, movies, on="movieId")
 
 
-def filter_users(data, min_interactions=5, max_interactions=100):
-    """Filter users with too few or too many interactions."""
+def filter_users(data, min_interactions=5, max_interactions=300):
+    """Keep only users with interactions between min_interactions and max_interactions."""
     user_counts = data['userId'].value_counts()
     valid_users = user_counts[(user_counts >= min_interactions) & (user_counts <= max_interactions)].index
     return data[data['userId'].isin(valid_users)]
 
 
-def filter_popular_movies(data, threshold=0.05):
-    """Remove the most popular movies to improve generalization."""
+def filter_popular_movies(data, threshold=0.01):
+    """Remove the top percentage of popular movies."""
     movie_counts = data['movieId'].value_counts()
     top_movies = movie_counts.nlargest(int(len(movie_counts) * threshold)).index
     return data[~data['movieId'].isin(top_movies)]
 
 
-def time_based_split(data, val_count=2, test_count=2):
-    """Use strict time-based splitting: keep the last 2 interactions for val and test."""
-    train_data, val_data, test_data = [], [], []
-    train_genres, val_genres, test_genres = [], [], []
-    targets_train, targets_val, targets_test = [], [], []
-
-    users = data['userId'].unique()
-    for user in tqdm(users, desc='Splitting Users by Time'):
-        user_data = data[data['userId'] == user].sort_values('timestamp')
-
-        if len(user_data) < val_count + test_count + SEQ_LENGTH:
-            continue  # Skip users with too few interactions
-
-        train_subset = user_data.iloc[:- (val_count + test_count)]
-        val_subset = user_data.iloc[-(val_count + test_count):-test_count]
-        test_subset = user_data.iloc[-test_count:]
-
-        # Extract sequences
-        train_movies = train_subset['movieId'].tolist()
-        val_movies = val_subset['movieId'].tolist()
-        test_movies = test_subset['movieId'].tolist()
-
-        train_genre = train_subset['genres'].tolist()
-        val_genre = val_subset['genres'].tolist()
-        test_genre = test_subset['genres'].tolist()
-
-        if len(train_movies) > SEQ_LENGTH:
-            train_data.append(train_movies[:-1])
-            train_genres.append(train_genre[:-1])
-            targets_train.append(train_movies[-1])
-
-        if len(val_movies) > SEQ_LENGTH:
-            val_data.append(val_movies[:-1])
-            val_genres.append(val_genre[:-1])
-            targets_val.append(val_movies[-1])
-
-        if len(test_movies) > SEQ_LENGTH:
-            test_data.append(test_movies[:-1])
-            test_genres.append(test_genre[:-1])
-            targets_test.append(test_movies[-1])
-
-    return train_data, val_data, test_data, train_genres, val_genres, test_genres, targets_train, targets_val, targets_test
-
-
+# -----------------------------
+# Build Interactions
+# -----------------------------
 def build_interactions(data):
-    """Build variable-length user interaction sequences."""
-    user_interactions, genre_interactions, targets = [], [], []
-    users = data['userId'].unique()
+    """
+    For each user, build:
+      - movie_interactions: list of movie IDs (first TRAIN_SEQ_LENGTH items from the raw list)
+      - genre_interactions: list of genre IDs corresponding to the movie interactions
+      - movie_targets: the target movie (the last item in the raw list)
+      - genre_targets: the target genre (first genre of the target movie)
+    Also build a mapping (genre2id) from genre string to integer.
+    """
+    movie_interactions = []
+    genre_interactions = []
+    movie_targets = []
+    genre_targets = []
+    genre2id = {}
+    current_genre_id = 0
 
+    users = data['userId'].unique()
     for user in tqdm(users, desc='Processing Users'):
         user_data = data[data['userId'] == user].sort_values('timestamp')
         movies_list = user_data['movieId'].tolist()
-        genres_list = user_data['genres'].tolist()
+        genres_list = user_data['genres'].tolist()  # e.g., "Comedy|Romance"
+        if len(movies_list) < RAW_SEQ_LENGTH:
+            continue  # Skip users with too few interactions
+        # Use only the last RAW_SEQ_LENGTH interactions
+        movies_list = movies_list[-RAW_SEQ_LENGTH:]
+        genres_list = genres_list[-RAW_SEQ_LENGTH:]
+        # The training sequence is the first TRAIN_SEQ_LENGTH items, and the target is the last item.
+        movie_interactions.append(movies_list[:-1])
+        movie_targets.append(movies_list[-1])
+        # Build genre sequence: for each movie in the training sequence, take its first genre.
+        genre_seq = []
+        for g in genres_list[:-1]:
+            first_genre = g.split("|")[0] if isinstance(g, str) else str(g)
+            if first_genre not in genre2id:
+                genre2id[first_genre] = current_genre_id
+                current_genre_id += 1
+            genre_seq.append(genre2id[first_genre])
+        genre_interactions.append(genre_seq)
+        # For target, take the first genre of the target movie.
+        target_genre_str = genres_list[-1].split("|")[0] if isinstance(genres_list[-1], str) else str(genres_list[-1])
+        if target_genre_str not in genre2id:
+            genre2id[target_genre_str] = current_genre_id
+            current_genre_id += 1
+        genre_targets.append(genre2id[target_genre_str])
+    return movie_interactions, genre_interactions, movie_targets, genre_targets, genre2id
 
-        # Generate variable sequence lengths (between 5-10)
-        if len(movies_list) > SEQ_LENGTH:
-            seq_length = random.randint(5, SEQ_LENGTH)
-            movies_list = movies_list[-(seq_length + 1):]  # Last N interactions
-            genres_list = genres_list[-(seq_length + 1):]
 
-        if len(movies_list) < SEQ_LENGTH + 1:
-            continue  # Skip short sequences
-
-        user_interactions.append(movies_list[:-1])
-        genre_interactions.append(genres_list[:-1])
-        targets.append(movies_list[-1])
-
-    return user_interactions, genre_interactions, targets
-
-
-def split_and_save(train_data, val_data, test_data, train_genres, val_genres, test_genres, train_targets, val_targets,
-                   test_targets, output_prefix):
-    """Save train, validation, and test datasets."""
+# -----------------------------
+# Save Merged Nested Fold Data
+# -----------------------------
+def save_nested_fold_merged_data(movies, movie_targets, genres, genre_targets, fold_no, split_type):
+    """
+    Save merged nested fold data into a single CSV file with columns:
+      - movie_seq, movie_len, movie_target, genre_seq, genre_len, genre_target.
+    Here, movie_len and genre_len are set to TRAIN_SEQ_LENGTH.
+    split_type should be 'train', 'val', or 'test'.
+    """
     os.makedirs(OUTPUT_DIR, exist_ok=True)
+    data_dict = {
+        "movie_seq": movies,
+        "movie_len": [TRAIN_SEQ_LENGTH for _ in movies],
+        "movie_target": movie_targets,
+        "genre_seq": genres,
+        "genre_len": [TRAIN_SEQ_LENGTH for _ in genres],
+        "genre_target": genre_targets
+    }
+    df = pd.DataFrame(data_dict)
+    df.to_csv(os.path.join(OUTPUT_DIR, f"{split_type}_fold{fold_no}.df"), index=False)
 
-    pd.DataFrame({'seq': train_data, 'len_seq': [len(x) for x in train_data], 'target': train_targets}).to_csv(
-        os.path.join(OUTPUT_DIR, f'{output_prefix}_train.df'), index=False)
-    pd.DataFrame({'seq': val_data, 'len_seq': [len(x) for x in val_data], 'target': val_targets}).to_csv(
-        os.path.join(OUTPUT_DIR, f'{output_prefix}_val.df'), index=False)
-    pd.DataFrame({'seq': test_data, 'len_seq': [len(x) for x in test_data], 'target': test_targets}).to_csv(
-        os.path.join(OUTPUT_DIR, f'{output_prefix}_test.df'), index=False)
 
-    pd.DataFrame({'genres': train_genres}).to_csv(os.path.join(OUTPUT_DIR, f'{output_prefix}_train_g.df'), index=False)
-    pd.DataFrame({'genres': val_genres}).to_csv(os.path.join(OUTPUT_DIR, f'{output_prefix}_val_g.df'), index=False)
-    pd.DataFrame({'genres': test_genres}).to_csv(os.path.join(OUTPUT_DIR, f'{output_prefix}_test_g.df'), index=False)
-
-
+# -----------------------------
+# Main Nested Splitting Procedure
+# -----------------------------
 if __name__ == "__main__":
     download_and_extract()
     data = load_data()
+    print("Data loaded:", data.shape)
 
-    # Apply filters to prevent overfitting
+    # Apply filters
     filtered_data = filter_users(data)
-    filtered_data = filter_popular_movies(filtered_data)  # Remove top 5% most popular movies
+    filtered_data = filter_popular_movies(filtered_data)
+    print("Filtered data:", filtered_data.shape)
 
-    # Prepare data for training using improved time-based splitting
-    train_data, val_data, test_data, train_genres, val_genres, test_genres, train_targets, val_targets, test_targets = time_based_split(
-        filtered_data)
-    # Save processed data
-    split_and_save(train_data, val_data, test_data, train_genres, val_genres, test_genres, train_targets, val_targets,
-                   test_targets, "movie_data")
+    # Build interactions for movies and genres
+    movie_interactions, genre_interactions, movie_targets, genre_targets, genre2id = build_interactions(filtered_data)
+    print("Number of interaction sequences:", len(movie_interactions))
+    print("Number of unique genres:", len(genre2id))
 
-    print("Processing complete! All datasets saved in 'Amir' folder.")
+    # Outer KFold splitting for nested cross-validation
+    kf_outer = KFold(n_splits=N_FOLDS, shuffle=True, random_state=42)
+    fold_no = 1
+
+    for outer_train_index, outer_test_index in kf_outer.split(movie_interactions):
+        print(f"Processing Outer Fold {fold_no}")
+        # Outer test data
+        movies_test = [movie_interactions[i] for i in outer_test_index]
+        movie_targets_test = [movie_targets[i] for i in outer_test_index]
+        genres_test = [genre_interactions[i] for i in outer_test_index]
+        genre_targets_test = [genre_targets[i] for i in outer_test_index]
+
+        # Split outer training data into inner training and inner validation (90/10 split)
+        inner_train_index, inner_val_index = train_test_split(outer_train_index, test_size=0.1, random_state=42)
+
+        movies_train = [movie_interactions[i] for i in inner_train_index]
+        movie_targets_train = [movie_targets[i] for i in inner_train_index]
+        genres_train = [genre_interactions[i] for i in inner_train_index]
+        genre_targets_train = [genre_targets[i] for i in inner_train_index]
+
+        movies_val = [movie_interactions[i] for i in inner_val_index]
+        movie_targets_val = [movie_targets[i] for i in inner_val_index]
+        genres_val = [genre_interactions[i] for i in inner_val_index]
+        genre_targets_val = [genre_targets[i] for i in inner_val_index]
+
+        # Save merged nested fold data (for each fold and each split)
+        save_nested_fold_merged_data(movies_train, movie_targets_train, genres_train, genre_targets_train, fold_no,
+                                     "train")
+        save_nested_fold_merged_data(movies_val, movie_targets_val, genres_val, genre_targets_val, fold_no, "val")
+        save_nested_fold_merged_data(movies_test, movie_targets_test, genres_test, genre_targets_test, fold_no, "test")
+
+        print(f"Saved merged fold {fold_no} files.")
+        fold_no += 1
+
+    # Optionally, save the genre mapping for later use
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    pd.DataFrame(list(genre2id.items()), columns=['genre', 'id']).to_csv(os.path.join(OUTPUT_DIR, "genre_mapping.csv"),
+                                                                         index=False)
+
+    print("Nested 10-Fold dataset preparation complete!")
