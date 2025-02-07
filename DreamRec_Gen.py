@@ -183,25 +183,6 @@ def evaluate(model, diff, dataset_split, device):
     print(f'Loss: {avg_loss:.4f}')
     return avg_loss, hr_list[0]
 
-
-############################################
-# Define a Simple Decoder for Genre Prediction
-############################################
-# Here we define a simple genre decoder.
-class GenreDecoder(nn.Module):
-    def __init__(self, hidden_size, genre_vocab_size):
-        super(GenreDecoder, self).__init__()
-        self.linear = nn.Linear(hidden_size, genre_vocab_size)
-
-    def forward(self, x):
-        return self.linear(x)
-
-
-# For convenience, set a global genre vocabulary size.
-# (Adjust this value based on your genre mapping.)
-genre_vocab_size = 100
-
-
 ############################################
 # Training Function for One Fold (Merged Data for Genre)
 ############################################
@@ -224,6 +205,14 @@ def train_fold(fold):
 
     # Data statistics for genre prediction
     seq_size = 10  # maximum sequence length for genres
+    # Load the genre mapping CSV (if it exists)
+    genre_mapping_path = os.path.join(MERGED_DATA_DIR, "genre_mapping.csv")
+    if os.path.exists(genre_mapping_path):
+        genre_mapping_df = pd.read_csv(genre_mapping_path)
+        genre_vocab_size = genre_mapping_df.shape[0]
+    else:
+    # Fallback: if no mapping file exists, set a default (or compute from your dataset)
+        genre_vocab_size = 18  # or compute dynamically from your training data
 
     # Initialize the base encoder (Tenc) and attach a simple genre decoder.
     model = Tenc(args.hidden_factor, genre_vocab_size, seq_size, args.dropout_rate, args.diffuser_type, device)
