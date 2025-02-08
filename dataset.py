@@ -169,20 +169,23 @@ if __name__ == "__main__":
 
     for outer_train_index, outer_test_index in kf_outer.split(movie_interactions):
         print(f"Processing Outer Fold {fold_no}")
-        # Outer test data
+        # Outer test data remains the same.
         movies_test = [movie_interactions[i] for i in outer_test_index]
         movie_targets_test = [movie_targets[i] for i in outer_test_index]
         genres_test = [genre_interactions[i] for i in outer_test_index]
         genre_targets_test = [genre_targets[i] for i in outer_test_index]
 
-        # Split outer training data into inner training and inner validation (90/10 split)
+        # Split outer training data to obtain a validation subset (for monitoring)
+        # However, we now use the entire outer_train_index as the training set.
         inner_train_index, inner_val_index = train_test_split(outer_train_index, test_size=0.1, random_state=42)
 
-        movies_train = [movie_interactions[i] for i in inner_train_index]
-        movie_targets_train = [movie_targets[i] for i in inner_train_index]
-        genres_train = [genre_interactions[i] for i in inner_train_index]
-        genre_targets_train = [genre_targets[i] for i in inner_train_index]
+        # Training set (union of inner_train and inner_val)
+        movies_train = [movie_interactions[i] for i in outer_train_index]
+        movie_targets_train = [movie_targets[i] for i in outer_train_index]
+        genres_train = [genre_interactions[i] for i in outer_train_index]
+        genre_targets_train = [genre_targets[i] for i in outer_train_index]
 
+        # Validation set (subset for monitoring; note that these examples are also in training)
         movies_val = [movie_interactions[i] for i in inner_val_index]
         movie_targets_val = [movie_targets[i] for i in inner_val_index]
         genres_val = [genre_interactions[i] for i in inner_val_index]
@@ -197,8 +200,35 @@ if __name__ == "__main__":
         print(f"Saved merged fold {fold_no} files.")
         fold_no += 1
 
-    # Optionally, save the genre mapping for later use
+    # -----------------------------
+    # Compute and Save Statistics
+    # -----------------------------
+    # Compute unique movies (from both the sequences and the targets)
+    unique_movies = set()
+    for seq in movie_interactions:
+        unique_movies.update(seq)
+    unique_movies.update(movie_targets)
+    movie_count = len(unique_movies)
+
+    num_users = len(movie_interactions)
+    num_genres = len(genre2id)
+    avg_movie_seq_length = np.mean([len(seq) for seq in movie_interactions])
+    avg_genre_seq_length = np.mean([len(seq) for seq in genre_interactions])
+
+    statics_dict = {
+        "num_users": num_users,
+        "num_movies": movie_count,
+        "num_genres": num_genres,
+        "train_seq_length": TRAIN_SEQ_LENGTH,
+        "raw_seq_length": RAW_SEQ_LENGTH,
+        "avg_movie_seq_length": avg_movie_seq_length,
+        "avg_genre_seq_length": avg_genre_seq_length
+    }
+    statics_df = pd.DataFrame(list(statics_dict.items()), columns=["statistic", "value"])
     os.makedirs(OUTPUT_DIR, exist_ok=True)
+    statics_df.to_csv(os.path.join(OUTPUT_DIR, "statics.csv"), index=False)
+    print("Saved statics.csv with dataset information.")
+
     pd.DataFrame(list(genre2id.items()), columns=['genre', 'id']).to_csv(os.path.join(OUTPUT_DIR, "genre_mapping.csv"),
                                                                          index=False)
 
