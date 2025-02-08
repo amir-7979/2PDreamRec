@@ -58,11 +58,23 @@ def load_data():
     return pd.merge(ratings, movies, on="movieId")
 
 
-def filter_users(data, min_interactions=5, max_interactions=300):
-    """Keep only users with interactions between min_interactions and max_interactions."""
+def filter_users(data, min_interactions=5, max_interactions=300, min_high_rating=5):
+    """
+    Keep only users who:
+      1. Have total interactions between min_interactions and max_interactions, and
+      2. Have at least min_high_rating interactions with a rating of 4 or above.
+    """
+    # First, filter by total interactions.
     user_counts = data['userId'].value_counts()
-    valid_users = user_counts[(user_counts >= min_interactions) & (user_counts <= max_interactions)].index
-    return data[data['userId'].isin(valid_users)]
+    valid_users_total = user_counts[(user_counts >= min_interactions) & (user_counts <= max_interactions)].index
+    data = data[data['userId'].isin(valid_users_total)]
+
+    # Now, for the remaining data, count per user how many interactions have rating >= 4.
+    high_rating_counts = data[data['rating'] >= 4].groupby('userId').size()
+    valid_high_rating_users = high_rating_counts[high_rating_counts >= min_high_rating].index
+
+    # Finally, keep only those users who satisfy both criteria.
+    return data[data['userId'].isin(valid_high_rating_users)]
 
 
 def filter_popular_movies(data, threshold=0.01):
