@@ -130,9 +130,9 @@ def parse_args():
     parser.add_argument('--tune', action='store_true', default=False, help='Enable hyperparameter tuning.')
     parser.add_argument('--epoch', type=int, default=100, help='Number of epochs per fold.')
     parser.add_argument('--random_seed', type=int, default=100, help='Random seed.')
-    parser.add_argument('--batch_size', type=int, default=128, help='Batch size.')
+    parser.add_argument('--batch_size', type=int, default=512, help='Batch size.')
     parser.add_argument('--hidden_factor', type=int, default=64, help='Hidden/embedding size.')
-    parser.add_argument('--timesteps', type=int, default=600, help='Diffusion timesteps.')
+    parser.add_argument('--timesteps', type=int, default=100, help='Diffusion timesteps.')
     parser.add_argument('--beta_end', type=float, default=0.02, help='Beta end for diffusion.')
     parser.add_argument('--beta_start', type=float, default=0.0001, help='Beta start for diffusion.')
     parser.add_argument('--lr', type=float, default=0.001, help='Learning rate.')
@@ -279,9 +279,10 @@ def evaluate(model, genre_model, genre_diff, split_csv, diff, device):
         # Diffusion loss using the genre embedding as conditioning:
         loss1, predicted_x = diff.p_losses(model, x_start, h, n, genres_embd=genre_predicted_x, loss_type='l2')
         predicted_items = model.decoder(predicted_x)
-        focal_loss = FocalLoss(alpha=0.5, gamma=8)
+        focal_loss = FocalLoss(alpha=0.5, gamma=7)
+
         loss2 = focal_loss(predicted_items, target_batch)
-        loss = (loss1 + loss2) / 2
+        loss = loss2/4
         losses.append(loss.item())
         # Get top-K recommendations:
         prediction = F.softmax(predicted_items, dim=-1)
@@ -311,14 +312,13 @@ def train_fold(fold):
     train_csv = f"train_fold{fold}.df"
     val_csv = f"val_fold{fold}.df"
     test_csv = f"test_fold{fold}.df"
-
+    
     train_df = pd.read_csv(os.path.join(MERGED_DATA_DIR, train_csv))
     val_df = pd.read_csv(os.path.join(MERGED_DATA_DIR, val_csv))
     test_df = pd.read_csv(os.path.join(MERGED_DATA_DIR, test_csv))
-
-    # Compute dynamic vocabulary sizes from the training data.
+    
     movie_vocab_size_dynamic, genre_vocab_size_dynamic = compute_vocab_sizes(train_df)
-    print(f"Computed movie_vocab_size: {movie_vocab_size_dynamic}, genre_vocab_size: {genre_vocab_size_dynamic}")
+
 
     train_dataset = MovieDataset(train_df)
     val_dataset = MovieDataset(val_df)
@@ -331,7 +331,7 @@ def train_fold(fold):
 
     # Initialize the movie model and its diffusion module.
     # For the movie branch, pass the dynamically computed movie vocabulary size.
-    model = MovieTenc(args.hidden_factor, movie_vocab_size_dynamic, seq_size, args.dropout_rate, args.diffuser_type,
+    model = MovieTenc(args.hidden_factor, 4000, seq_size, args.dropout_rate, args.diffuser_type,
                       device)
     diff = MovieDiffusion(args.timesteps, args.beta_start, args.beta_end, args.w)
 
@@ -360,7 +360,7 @@ def train_fold(fold):
     else:
         optimizer = optim.Adam(model.parameters(), lr=args.lr, eps=1e-6, weight_decay=args.l2_decay)
 
-    scheduler = lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.7)
+    scheduler = lr_scheduler.StepLR(optimizer, step_size=20, gamma=2)
 
     for epoch in range(args.epoch):
         start_time = Time.time()
@@ -377,6 +377,9 @@ def train_fold(fold):
             optimizer.zero_grad()
             # Movie branch forward:
             x_start = model.cacu_x(target_batch)
+          
+
+
             h = model.cacu_h(seq_batch, len_seq_batch, args.p)
             n = torch.randint(0, args.timesteps, (seq_batch.shape[0],), device=device).long()
             # Genre branch forward:
@@ -387,9 +390,9 @@ def train_fold(fold):
             # Diffusion loss (movie branch conditioned on genre branch output)
             loss1, predicted_x = diff.p_losses(model, x_start, h, n, genres_embd=genre_predicted_x, loss_type='l2')
             predicted_items = model.decoder(predicted_x)
-            focal_loss = FocalLoss(alpha=0.5, gamma=8)
+            focal_loss = FocalLoss(alpha=0.5, gamma=7)
             loss2 = focal_loss(predicted_items, target_batch)
-            loss = (loss1 + loss2) / 2
+            loss = loss2/4
 
             loss.backward()
             optimizer.step()
@@ -460,6 +463,10 @@ def main():
         for m in best_metrics:
             print(f"{m.name}: {m.bestOne}")
     else:
+        args.lr = 0.001
+        args.optimizer = 'adamw'
+        metrics = [Metric(name='timesteps', values=[100])]
+        best_metrics = []
         for fold in range(1, NUM_FOLDS + 1):
             hr_val, hr_test = train_fold(fold)
             fold_val_metrics.append(hr_val)
