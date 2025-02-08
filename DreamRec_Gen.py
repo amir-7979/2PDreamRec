@@ -187,13 +187,9 @@ class FoldMetrics:
             val = self.val_metrics[epoch]
             test = self.test_metrics.get(epoch, None)
             test_loss = test['loss'] if test is not None else float('nan')
-            s += f"{epoch}\t{train_loss:.4f}\t{val['loss']:.4f}\t{test_loss:.4f}\t{val['HR5']:.4f}\t{val['NDCG5']:.4f}\t{val['HR10']:.4f}\t{val['NDCG10']:.4f}\n"
+            s += f"{epoch}\t{train_loss:.4f}\t{val['loss']:.4f}\t{test_loss:.4f}\t{test['HR5']:.4f}\t{test['NDCG5']:.4f}\t{test['HR10']:.4f}\t{test['NDCG10']:.4f}\n"
         s += "Final Test Metrics (last checkpoint):\n"
-        if self.test_metrics:
-            last_epoch = max(self.test_metrics.keys())
-            test = self.test_metrics[last_epoch]
-            s += (f"Epoch {last_epoch}: Loss: {test['loss']:.4f}, HR@5: {test['HR5']:.4f}, "
-                  f"NDCG@5: {test['NDCG5']:.4f}, HR@10: {test['HR10']:.4f}, NDCG@10: {test['NDCG10']:.4f}\n")
+
         return s
 
 
@@ -240,14 +236,9 @@ class AverageMetrics:
             val = self.avg_val_metrics[epoch]
             test = self.avg_test_metrics.get(epoch, None)
             test_loss = test['loss'] if test is not None else float('nan')
-            s += (f"{epoch}\t{train_loss:.4f}\t{val['loss']:.4f}\t{test_loss:.4f}\t{val['HR5']:.4f}\t"
-                  f"{val['NDCG5']:.4f}\t{val['HR10']:.4f}\t{val['NDCG10']:.4f}\n")
+            s += (f"{epoch}\t{train_loss:.4f}\t{val['loss']:.4f}\t{test_loss:.4f}\t{test['HR5']:.4f}\t"
+                  f"{test['NDCG5']:.4f}\t{test['HR10']:.4f}\t{test['NDCG10']:.4f}\n")
         s += "Final Average Test Metrics (last checkpoint):\n"
-        if self.avg_test_metrics:
-            last_epoch = max(self.avg_test_metrics.keys())
-            test = self.avg_test_metrics[last_epoch]
-            s += (f"Epoch {last_epoch}: Loss: {test['loss']:.4f}, HR@5: {test['HR5']:.4f}, "
-                  f"NDCG@5: {test['NDCG5']:.4f}, HR@10: {test['HR10']:.4f}, NDCG@10: {test['NDCG10']:.4f}\n")
         return s
 
 
