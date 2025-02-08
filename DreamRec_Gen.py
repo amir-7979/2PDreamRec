@@ -17,14 +17,12 @@ from Modules_ori import MovieDiffusion, Tenc, MovieTenc, load_genres_predictor, 
 from utility import extract_axis_1, calculate_hit
 
 import logging
-
 logging.getLogger().setLevel(logging.INFO)
 
 ############################################
 # Directory for Merged Data Splits
 ############################################
 MERGED_DATA_DIR = "data"
-
 
 ############################################
 # Dataset Definition (Merged for Genre)
@@ -37,7 +35,6 @@ class GenreDataset(Dataset):
       - genre_len: integer (length of genre sequence; if missing, it is computed)
       - genre_target: target genre ID
     """
-
     def __init__(self, dataframe):
         self.genre_seq = dataframe['genre_seq'].tolist()
         if 'genre_len' in dataframe.columns:
@@ -53,7 +50,6 @@ class GenreDataset(Dataset):
         return (torch.tensor(eval(self.genre_seq[idx]), dtype=torch.long),
                 torch.tensor(self.genre_len[idx], dtype=torch.long),
                 torch.tensor(self.genre_target[idx], dtype=torch.long))
-
 
 ############################################
 # Argument Parsing and Setup
@@ -85,9 +81,7 @@ def parse_args():
     parser.add_argument('--descri', type=str, default='', help='Description of the run.')
     return parser.parse_args()
 
-
 args = parse_args()
-
 
 def setup_seed(seed):
     torch.manual_seed(seed)
@@ -96,11 +90,9 @@ def setup_seed(seed):
     random.seed(seed)
     torch.backends.cudnn.deterministic = True
 
-
 setup_seed(args.random_seed)
 device = torch.device(f"cuda:{args.cuda}" if torch.cuda.is_available() else "cpu")
 print(f"Using device: {device}")
-
 
 ############################################
 # Evaluation Function
@@ -126,9 +118,9 @@ def evaluate(model, diff, dataset_split, device):
     genre_target = eval_data['genre_target'].values
 
     for i in range(0, len(genre_seq), batch_size):
-        seq_batch = torch.LongTensor(genre_seq[i:i + batch_size]).to(device)
-        len_seq_batch = torch.LongTensor(genre_len[i:i + batch_size]).to(device)
-        target_batch = torch.LongTensor(genre_target[i:i + batch_size]).to(device)
+        seq_batch = torch.LongTensor(genre_seq[i:i+batch_size]).to(device)
+        len_seq_batch = torch.LongTensor(genre_len[i:i+batch_size]).to(device)
+        target_batch = torch.LongTensor(genre_target[i:i+batch_size]).to(device)
 
         x_start = model.cacu_x(target_batch)
         h = model.cacu_h(seq_batch, len_seq_batch, args.p)
@@ -149,25 +141,15 @@ def evaluate(model, diff, dataset_split, device):
     return {'loss': avg_loss, 'HR5': hr_list[0], 'NDCG5': ndcg_list[0],
             'HR10': hr_list[1], 'NDCG10': ndcg_list[1]}
 
-
 ############################################
 # Classes for Recording Metrics
 ############################################
-
 class FoldMetrics:
-    """
-    Stores metrics for one fold.
-    Records:
-      - train_losses: a list of (epoch, loss) tuples,
-      - val_metrics: a dict mapping checkpoint epoch -> metrics dict,
-      - test_metrics: similar to val_metrics.
-    """
-
     def __init__(self, fold_number):
         self.fold_number = fold_number
-        self.train_losses = []  # List of tuples: (epoch, train_loss)
-        self.val_metrics = {}  # Dict: epoch -> {loss, HR5, NDCG5, HR10, NDCG10}
-        self.test_metrics = {}  # Dict: epoch -> {loss, HR5, NDCG5, HR10, NDCG10}
+        self.train_losses = []  # list of tuples: (epoch, loss)
+        self.val_metrics = {}   # dict: epoch -> metrics dict
+        self.test_metrics = {}  # dict: epoch -> metrics dict
 
     def add_train_loss(self, epoch, loss):
         self.train_losses.append((epoch, loss))
@@ -180,7 +162,6 @@ class FoldMetrics:
 
     def __str__(self):
         s = f"Fold {self.fold_number} Metrics:\n"
-        # Added TestLoss column after ValLoss.
         s += "Epoch\tTrainLoss\tValLoss\tTestLoss\tHR@5\tNDCG@5\tHR@10\tNDCG@10\n"
         for epoch in sorted(self.val_metrics.keys()):
             train_loss = next((tl for ep, tl in self.train_losses if ep == epoch), None)
@@ -188,22 +169,13 @@ class FoldMetrics:
             test = self.test_metrics.get(epoch, None)
             test_loss = test['loss'] if test is not None else float('nan')
             s += f"{epoch}\t{train_loss:.4f}\t{val['loss']:.4f}\t{test_loss:.4f}\t{test['HR5']:.4f}\t{test['NDCG5']:.4f}\t{test['HR10']:.4f}\t{test['NDCG10']:.4f}\n"
-        s += "Final Test Metrics (last checkpoint):\n"
-
         return s
 
-
 class AverageMetrics:
-    """
-    Aggregates metrics across folds.
-    Computes average training loss per checkpoint and
-    average validation/test metrics.
-    """
-
     def __init__(self):
-        self.avg_train_loss = {}  # key: epoch, value: list of train losses
-        self.avg_val_metrics = {}  # key: epoch, value: list of metrics dicts
-        self.avg_test_metrics = {}  # key: epoch, value: list of metrics dicts
+        self.avg_train_loss = {}
+        self.avg_val_metrics = {}
+        self.avg_test_metrics = {}
         self.num_folds = 0
 
     def add_fold_metrics(self, fold_metric):
@@ -217,19 +189,16 @@ class AverageMetrics:
 
     def compute_averages(self):
         self.avg_train_loss = {epoch: np.mean(losses) for epoch, losses in self.avg_train_loss.items()}
-
         def avg_dict(metrics_list):
             avg_d = {}
             for key in metrics_list[0].keys():
                 avg_d[key] = np.mean([m[key] for m in metrics_list])
             return avg_d
-
         self.avg_val_metrics = {epoch: avg_dict(metrics_list) for epoch, metrics_list in self.avg_val_metrics.items()}
         self.avg_test_metrics = {epoch: avg_dict(metrics_list) for epoch, metrics_list in self.avg_test_metrics.items()}
 
     def __str__(self):
         s = "Average Metrics Across Folds:\n"
-        # Added AvgTestLoss column after AvgValLoss.
         s += "Epoch\tAvgTrainLoss\tAvgValLoss\tAvgTestLoss\tAvgHR@5\tAvgNDCG@5\tAvgHR@10\tAvgNDCG@10\n"
         for epoch in sorted(self.avg_val_metrics.keys()):
             train_loss = self.avg_train_loss.get(epoch, None)
@@ -238,18 +207,82 @@ class AverageMetrics:
             test_loss = test['loss'] if test is not None else float('nan')
             s += (f"{epoch}\t{train_loss:.4f}\t{val['loss']:.4f}\t{test_loss:.4f}\t{test['HR5']:.4f}\t"
                   f"{test['NDCG5']:.4f}\t{test['HR10']:.4f}\t{test['NDCG10']:.4f}\n")
-        s += "Final Average Test Metrics (last checkpoint):\n"
         return s
 
+############################################
+# Modified Tuning Classes (Recording lists per candidate)
+############################################
+class TuningMetric:
+    """
+    Records, for each candidate, the list of HR@10 values at each evaluation checkpoint (e.g. epochs 10,20,...,100)
+    from each fold.
+    """
+    def __init__(self, name, values):
+        self.name = name            # e.g., 'lr'
+        self.values = values        # candidate values list
+        # For each candidate, use a dict: key = evaluation epoch, value = list of HR@10 values (from each fold)
+        self.eval_dict = defaultdict(lambda: defaultdict(list))
+        self.best_value = None
+
+    def record(self, candidate, fold_hr10_list):
+        """
+        fold_hr10_list: a list of HR@10 values (one per evaluation checkpoint)
+        """
+        for i, hr in enumerate(fold_hr10_list):
+            # Evaluation checkpoint epoch = (i+1)*10 (assuming evaluations occur every 10 epochs)
+            self.eval_dict[candidate][(i+1)*10].append(hr)
+
+    def average(self):
+        """
+        For each candidate, compute the average HR@10 at each evaluation epoch.
+        Returns a dict: candidate -> list of average HR@10 at epochs 10,20,...,100.
+        """
+        self.avg_dict = {}
+        for candidate in self.values:
+            avg_list = []
+            for epoch in sorted(self.eval_dict[candidate].keys()):
+                avg_list.append(np.mean(self.eval_dict[candidate][epoch]))
+            self.avg_dict[candidate] = avg_list
+        return self.avg_dict
+
+    def find_best(self):
+        """
+        Choose the best candidate based on the average HR@10 at the final evaluation checkpoint (epoch 100).
+        """
+        self.average()
+        best = -np.inf
+        for candidate in self.values:
+            avg_final = np.mean(self.eval_dict[candidate][100])
+            if avg_final > best:
+                best = avg_final
+                self.best_value = candidate
+        return self.best_value
+
+    def __str__(self):
+        s = f"TuningMetric for {self.name}:\n"
+        for candidate in self.values:
+            avg_list = self.avg_dict.get(candidate, None)
+            s += f"Candidate: {candidate}, HR@10 over eval epochs: {avg_list}\n"
+        s += f"Best candidate: {self.best_value}\n"
+        return s
+
+class TuningSummary:
+    def __init__(self):
+        self.metrics = {}
+    def add_metric(self, tuning_metric: TuningMetric):
+        self.metrics[tuning_metric.name] = tuning_metric
+    def __str__(self):
+        s = "Tuning Summary:\n"
+        for metric in self.metrics.values():
+            s += str(metric) + "\n"
+        return s
 
 ############################################
-# Training Function for One Fold
+# Training Function for One Fold (unchanged)
 ############################################
 def train_fold(fold):
     print(f"\n========== Fold {fold} ==========")
     fold_metrics = FoldMetrics(fold)
-
-    # File names for merged data splits:
     train_csv = f"train_fold{fold}.df"
     val_csv = f"val_fold{fold}.df"
     test_csv = f"test_fold{fold}.df"
@@ -264,7 +297,7 @@ def train_fold(fold):
 
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
 
-    # Use statistics (if available) to set model parameters.
+    # Set model parameters from statics if available.
     statics_path = os.path.join(MERGED_DATA_DIR, "statics.csv")
     if os.path.exists(statics_path):
         statics_df = pd.read_csv(statics_path)
@@ -281,7 +314,6 @@ def train_fold(fold):
         else:
             genre_vocab_size = 18
 
-    # Initialize the model and diffusion modules.
     model = Tenc(args.hidden_factor, genre_vocab_size, seq_size, args.dropout_rate, args.diffuser_type, device)
     diff = diffusion(args.timesteps, args.beta_start, args.beta_end, args.w)
     model.to(device)
@@ -299,7 +331,7 @@ def train_fold(fold):
 
     scheduler = lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.7)
 
-    # Training loop: record train loss each epoch; every 10 epochs, evaluate on val & test.
+    # Training loop: record train loss each epoch; every 10 epochs, evaluate.
     for epoch in range(args.epoch):
         start_time = Time.time()
         model.train()
@@ -321,73 +353,110 @@ def train_fold(fold):
         avg_epoch_loss = np.mean(epoch_losses)
         fold_metrics.add_train_loss(epoch + 1, avg_epoch_loss)
         if args.report_epoch:
-            print(
-                f"Fold {fold} Epoch {epoch + 1:03d}; Train loss: {avg_epoch_loss:.4f}; Time: {Time.strftime('%H:%M:%S', Time.gmtime(Time.time() - start_time))}")
-        # Every 10 epochs, evaluate on validation and test sets.
-        # Every 10 epochs, evaluate on training, validation, and test sets.
+            print(f"Fold {fold} Epoch {epoch + 1:03d}; Train loss: {avg_epoch_loss:.4f}; Time: {Time.strftime('%H:%M:%S', Time.gmtime(Time.time() - start_time))}")
         if (epoch + 1) % 10 == 0:
             model.eval()
             with torch.no_grad():
                 print(f"Fold {fold}: Evaluation at Epoch {epoch + 1}")
-                # Evaluate in eval mode on all splits:
                 train_eval_met = evaluate(model, diff, train_csv, device)
                 val_met = evaluate(model, diff, val_csv, device)
                 test_met = evaluate(model, diff, test_csv, device)
-            # Instead of using the raw train loss from the training loop,
-            # use train_eval_met['loss'] to record the training loss in eval mode.
             fold_metrics.add_train_loss(epoch + 1, train_eval_met['loss'])
             fold_metrics.add_val_metrics(epoch + 1, val_met)
             fold_metrics.add_test_metrics(epoch + 1, test_met)
             scheduler.step()
 
-    # Optionally, save the final model.
     os.makedirs("./models", exist_ok=True)
     torch.save(model.state_dict(), f"./models/genre_tenc_fold{fold}.pth")
     torch.save(diff, f"./models/genre_diff_fold{fold}.pth")
-
     return fold_metrics
 
-
 ############################################
-# Main Function
+# Main Function with Tuning (Using Only Fold 1)
 ############################################
 def main():
-    NUM_FOLDS = 10
-    fold_metrics_list = []
-    if args.tune:
-        # When tuning, you might run a different procedure.
-        # (For example, tuning hyperparameters across folds.)
-        pass
-    else:
-        # Run 10-fold CV and record metrics.
-        for fold in range(1, NUM_FOLDS + 1):
-            fm = train_fold(fold)
-            fold_metrics_list.append(fm)
-            print("results:")
-            print(fm)  # Print the fold metrics after each fold.
+    # For tuning, we use only fold 1 for faster experiments.
+    tuning_fold = 1
 
-        # Compute average metrics across folds.
-        avg_metrics = AverageMetrics()
-        for fm in fold_metrics_list:
-            avg_metrics.add_fold_metrics(fm)
-        avg_metrics.compute_averages()
+    # Define candidate values.
+    lr_candidates = [0.1, 0.01, 0.001, 0.0001, 0.00001]
+    optimizer_candidates = ['adam', 'adamw', 'adagrad', 'rmsprop']
+    timesteps_candidates = [i * 100 for i in range(1, 11)]
 
-        print("\n========== Average Metrics Across Folds ==========")
-        print(avg_metrics)
+    # Create tuning metric objects.
+    tuning_lr = TuningMetric("lr", lr_candidates)
+    tuning_optimizer = TuningMetric("optimizer", optimizer_candidates)
+    tuning_timesteps = TuningMetric("timesteps", timesteps_candidates)
 
-        # Choose filename based on tuning mode.
-        if args.tune:
-            filename = "category_une.txt"
-        else:
-            filename = "category_not_une.txt"
+    # --- Tuning learning rate using only fold 1 ---
+    for candidate in tqdm(lr_candidates, desc="Tuning lr"):
+        args.lr = candidate
+        fm = train_fold(tuning_fold)
+        # Extract HR@10 values from each evaluation checkpoint (epochs 10,20,...,100)
+        fold_hr10_list = [fm.test_metrics[epoch]['HR10'] for epoch in sorted(fm.test_metrics.keys())]
+        tuning_lr.record(candidate, fold_hr10_list)
+        print(f"[lr candidate {candidate}] Fold {tuning_fold}: HR@10 = {fold_hr10_list}")
 
-        with open(filename, "w") as f:
-            for fm in fold_metrics_list:
-                f.write(str(fm))
-                f.write("\n")
-            f.write(str(avg_metrics))
-        print(f"Results saved in {filename}")
+    # --- Tuning optimizer using only fold 1 ---
+    for candidate in tqdm(optimizer_candidates, desc="Tuning optimizer"):
+        args.optimizer = candidate
+        fm = train_fold(tuning_fold)
+        fold_hr10_list = [fm.test_metrics[epoch]['HR10'] for epoch in sorted(fm.test_metrics.keys())]
+        tuning_optimizer.record(candidate, fold_hr10_list)
+        print(f"[optimizer candidate {candidate}] Fold {tuning_fold}: HR@10 = {fold_hr10_list}")
 
+    # --- Tuning timesteps using only fold 1 ---
+    for candidate in tqdm(timesteps_candidates, desc="Tuning timesteps"):
+        args.timesteps = candidate
+        fm = train_fold(tuning_fold)
+        fold_hr10_list = [fm.test_metrics[epoch]['HR10'] for epoch in sorted(fm.test_metrics.keys())]
+        tuning_timesteps.record(candidate, fold_hr10_list)
+        print(f"[timesteps candidate {candidate}] Fold {tuning_fold}: HR@10 = {fold_hr10_list}")
+
+    # Compute averages for each candidate.
+    tuning_lr.average()
+    tuning_optimizer.average()
+    tuning_timesteps.average()
+
+    # Print detailed average HR@10 per candidate.
+    print("\nDetailed HR@10 (averaged over fold 1) per evaluation epoch:")
+    print("Learning Rate Candidates:")
+    for candidate in lr_candidates:
+        avg_list = np.mean(np.array(tuning_lr.eval_dict[candidate]), axis=0)
+        print(f"  Candidate {candidate}: {avg_list.tolist()}")
+
+    print("Optimizer Candidates:")
+    for candidate in optimizer_candidates:
+        avg_list = np.mean(np.array(tuning_optimizer.eval_dict[candidate]), axis=0)
+        print(f"  Candidate {candidate}: {avg_list.tolist()}")
+
+    print("Timesteps Candidates:")
+    for candidate in timesteps_candidates:
+        avg_list = np.mean(np.array(tuning_timesteps.eval_dict[candidate]), axis=0)
+        print(f"  Candidate {candidate}: {avg_list.tolist()}")
+
+    # Determine best candidates (using the average at epoch 100).
+    best_lr = tuning_lr.find_best()
+    best_optimizer = tuning_optimizer.find_best()
+    best_timesteps = tuning_timesteps.find_best()
+
+    print("\nTuning complete.")
+    print("Best learning rate:", best_lr)
+    print("Best optimizer:", best_optimizer)
+    print("Best timesteps:", best_timesteps)
+
+    # Create and save a tuning summary.
+    tuning_summary = TuningSummary()
+    tuning_summary.add_metric(tuning_lr)
+    tuning_summary.add_metric(tuning_optimizer)
+    tuning_summary.add_metric(tuning_timesteps)
+
+    print("\nTuning Summary:")
+    print(tuning_summary)
+    os.makedirs("./tune", exist_ok=True)
+    with open("./tune/tuning_summary.txt", "w") as f:
+        f.write(str(tuning_summary))
+    print("Tuning summary saved in ./tune/tuning_summary.txt")
 
 if __name__ == '__main__':
     main()
