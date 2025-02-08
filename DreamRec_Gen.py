@@ -142,7 +142,7 @@ def evaluate(model, diff, dataset_split, device):
             'HR10': hr_list[1], 'NDCG10': ndcg_list[1]}
 
 ############################################
-# Classes for Recording Metrics (Fold and Average)
+# Classes for Recording Fold & Average Metrics
 ############################################
 class FoldMetrics:
     def __init__(self, fold_number):
@@ -241,17 +241,23 @@ class TuningMetric:
         self.average()
         best = -np.inf
         for candidate in self.values:
-            avg_final = np.mean(self.eval_dict[candidate][100])
-            if avg_final > best:
-                best = avg_final
-                self.best_value = candidate
+            # Use the average HR@10 at the final checkpoint (epoch 100)
+            if 100 in self.eval_dict[candidate] and len(self.eval_dict[candidate][100]) > 0:
+                avg_final = np.mean(self.eval_dict[candidate][100])
+                if avg_final > best:
+                    best = avg_final
+                    self.best_value = candidate
         return self.best_value
 
     def __str__(self):
         s = f"TuningMetric for {self.name}:\n"
         for candidate in self.values:
-            avg_list = self.avg_dict.get(candidate, None)
-            s += f"Candidate: {candidate}, HR@10 over eval epochs: {avg_list}\n"
+            if candidate in self.eval_dict and self.eval_dict[candidate]:
+                checkpoints = sorted(self.eval_dict[candidate].keys())
+                avg_list = [np.mean(self.eval_dict[candidate][cp]) for cp in checkpoints]
+                s += f"Candidate: {candidate}, HR@10 over eval epochs: {avg_list}\n"
+            else:
+                s += f"Candidate: {candidate}, No evaluations recorded\n"
         s += f"Best candidate: {self.best_value}\n"
         return s
 
@@ -286,6 +292,7 @@ def train_fold(fold):
 
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
 
+    # Set model parameters from statics if available.
     statics_path = os.path.join(MERGED_DATA_DIR, "statics.csv")
     if os.path.exists(statics_path):
         statics_df = pd.read_csv(statics_path)
@@ -364,13 +371,13 @@ def train_fold(fold):
 def main():
     NUM_FOLDS = 10
     if args.tune:
-        # For tuning, we use only fold 1 for faster experiments.
+        # Use only fold 1 for tuning (for faster experiments)
         tuning_fold = 1
 
         # Define candidate values.
         lr_candidates = [0.1, 0.01, 0.001, 0.0001, 0.00001]
         optimizer_candidates = ['adam', 'adamw', 'adagrad', 'rmsprop']
-        timesteps_candidates = [i * 100 for i in range(1, 11)]
+        timesteps_candidates = [i * 50 for i in range(1, 11)]
 
         # Create tuning metric objects.
         tuning_lr = TuningMetric("lr", lr_candidates)
@@ -381,7 +388,6 @@ def main():
         for candidate in tqdm(lr_candidates, desc="Tuning lr"):
             args.lr = candidate
             fm = train_fold(tuning_fold)
-            # Extract HR@10 values from each evaluation checkpoint (epochs 10,20,...,100)
             fold_hr10_list = [fm.test_metrics[epoch]['HR10'] for epoch in sorted(fm.test_metrics.keys())]
             tuning_lr.record(candidate, fold_hr10_list)
             print(f"[lr candidate {candidate}] Fold {tuning_fold}: HR@10 = {fold_hr10_list}")
@@ -411,18 +417,28 @@ def main():
         print("\nDetailed HR@10 (averaged over fold 1) per evaluation epoch:")
         print("Learning Rate Candidates:")
         for candidate in lr_candidates:
-            avg_list = np.mean(np.array(tuning_lr.eval_dict[candidate]), axis=0)
-            print(f"  Candidate {candidate}: {avg_list.tolist()}")
-
+            if candidate in tuning_lr.eval_dict and tuning_lr.eval_dict[candidate]:
+                checkpoints = sorted(tuning_lr.eval_dict[candidate].keys())
+                avg_list = [np.mean(tuning_lr.eval_dict[candidate][cp]) for cp in checkpoints]
+                print(f"  Candidate {candidate}: {avg_list}")
+            else:
+                print(f"  Candidate {candidate}: No evaluation recorded")
         print("Optimizer Candidates:")
         for candidate in optimizer_candidates:
-            avg_list = np.mean(np.array(tuning_optimizer.eval_dict[candidate]), axis=0)
-            print(f"  Candidate {candidate}: {avg_list.tolist()}")
-
+            if candidate in tuning_optimizer.eval_dict and tuning_optimizer.eval_dict[candidate]:
+                checkpoints = sorted(tuning_optimizer.eval_dict[candidate].keys())
+                avg_list = [np.mean(tuning_optimizer.eval_dict[candidate][cp]) for cp in checkpoints]
+                print(f"  Candidate {candidate}: {avg_list}")
+            else:
+                print(f"  Candidate {candidate}: No evaluation recorded")
         print("Timesteps Candidates:")
         for candidate in timesteps_candidates:
-            avg_list = np.mean(np.array(tuning_timesteps.eval_dict[candidate]), axis=0)
-            print(f"  Candidate {candidate}: {avg_list.tolist()}")
+            if candidate in tuning_timesteps.eval_dict and tuning_timesteps.eval_dict[candidate]:
+                checkpoints = sorted(tuning_timesteps.eval_dict[candidate].keys())
+                avg_list = [np.mean(tuning_timesteps.eval_dict[candidate][cp]) for cp in checkpoints]
+                print(f"  Candidate {candidate}: {avg_list}")
+            else:
+                print(f"  Candidate {candidate}: No evaluation recorded")
 
         # Determine best candidates (using the average at epoch 100).
         best_lr = tuning_lr.find_best()
