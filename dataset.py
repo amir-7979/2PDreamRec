@@ -167,7 +167,7 @@ if __name__ == "__main__":
 
     # Apply filters
     filtered_data = filter_users(data)
-    #filtered_data = filter_popular_movies(filtered_data)
+    filtered_data = filter_popular_movies(filtered_data)
     print("Filtered data:", filtered_data.shape)
 
     # Build interactions for movies and genres

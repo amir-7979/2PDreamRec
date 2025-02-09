@@ -98,11 +98,6 @@ print(f"Using device: {device}")
 # Evaluation Function
 ############################################
 def evaluate(model, diff, dataset_split, device):
-    # Set a fixed random seed for evaluation to ensure determinism.
-    fixed_seed = 100
-    torch.manual_seed(fixed_seed)
-    np.random.seed(fixed_seed)
-    random.seed(fixed_seed)
 
     eval_data = pd.read_csv(os.path.join(MERGED_DATA_DIR, dataset_split))
     batch_size = args.batch_size

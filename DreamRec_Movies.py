@@ -158,74 +158,6 @@ class FocalLoss(nn.Module):
 
 
 # =============================================================================
-# 6. EVALUATION FUNCTION (with Genre Integration)
-# =============================================================================
-def evaluate(model, genre_model, genre_diff, split_csv, diff, device):
-    fixed_seed = 100
-    torch.manual_seed(fixed_seed)
-    np.random.seed(fixed_seed)
-    random.seed(fixed_seed)
-
-    eval_data = pd.read_csv(os.path.join(MERGED_DATA_DIR, split_csv))
-    batch_size = args.batch_size
-    topk = [5, 10]
-    total_samples = 0
-    hit_purchase = np.zeros(len(topk))
-    ndcg_purchase = np.zeros(len(topk))
-    losses = []
-
-    movie_seq = eval_data['movie_seq'].apply(lambda x: list(map(int, eval(x)))).tolist()
-    movie_len = eval_data['movie_len'].values if 'movie_len' in eval_data.columns else np.array(
-        [len(eval(x)) for x in eval_data['movie_seq'].tolist()])
-    movie_target = eval_data['movie_target'].values
-    genre_seq = eval_data['genre_seq'].apply(lambda x: list(map(int, eval(x)))).tolist()
-    genre_target = eval_data['genre_target'].values
-
-    for i in range(0, len(movie_seq), batch_size):
-        seq_batch = torch.LongTensor(movie_seq[i:i + batch_size]).to(device)
-        len_seq_batch = torch.LongTensor(movie_len[i:i + batch_size]).to(device)
-        target_batch = torch.LongTensor(movie_target[i:i + batch_size]).to(device)
-        genre_seq_batch = torch.LongTensor(genre_seq[i:i + batch_size]).to(device)
-        genre_target_batch = torch.LongTensor(genre_target[i:i + batch_size]).to(device)
-
-        # Movie branch:
-        x_start = model.cacu_x(target_batch)
-        h = model.cacu_h(seq_batch, len_seq_batch, args.p)
-        n = torch.randint(0, args.timesteps, (seq_batch.shape[0],), device=device).long()
-        # Genre branch:
-        n_g = torch.randint(0, genre_diff.timesteps, (seq_batch.shape[0],), device=device).long()
-        genre_x_start = genre_model.cacu_x(genre_target_batch)
-        genre_h = genre_model.cacu_h(genre_seq_batch, len_seq_batch, args.p)
-        _, genre_predicted_x = genre_diff.p_losses(genre_model, genre_x_start, genre_h, n_g, loss_type='l2')
-
-        loss1, predicted_x = diff.p_losses(model, x_start, h, n, genres_embd=genre_predicted_x, loss_type='l2')
-        predicted_items = model.decoder(predicted_x)
-        focal_loss = FocalLoss(alpha=0.5, gamma=7)
-        loss2 = focal_loss(predicted_items, target_batch)
-        loss = loss2 / 4
-        losses.append(loss.item())
-
-        prediction = torch.softmax(predicted_items, dim=-1)
-        _, topK = prediction.topk(10, dim=1, largest=True, sorted=True)
-        topK = topK.cpu().detach().numpy()
-        calculate_hit(target_batch, topK, topk, hit_purchase, ndcg_purchase)
-        total_samples += len(target_batch)
-
-    avg_loss = np.mean(losses) if losses else 0.0
-    hr_list = hit_purchase / total_samples
-    ndcg_list = ndcg_purchase / total_samples
-    print('{:<10s} {:<10s} {:<10s} {:<10s}'.format(
-        'HR@' + str(topk[0]), 'NDCG@' + str(topk[0]),
-        'HR@' + str(topk[1]), 'NDCG@' + str(topk[1])))
-    print('{:<10.6f} {:<10.6f} {:<10.6f} {:<10.6f}'.format(
-        hr_list[0], ndcg_list[0], hr_list[1], ndcg_list[1]))
-    print(f'Loss: {avg_loss:.4f}')
-
-    return {'loss': avg_loss, 'HR5': hr_list[0], 'NDCG5': ndcg_list[0],
-            'HR10': hr_list[1], 'NDCG10': ndcg_list[1]}
-
-
-# =============================================================================
 # 7. METRICS CLASSES (Fold and Average)
 # =============================================================================
 class FoldMetrics:
@@ -362,6 +294,66 @@ class TuningSummary:
             s += str(metric) + "\n"
         return s
 
+# =============================================================================
+# 6. EVALUATION FUNCTION (with Genre Integration)
+# =============================================================================
+def evaluate(model, genre_model, genre_diff, split_csv, diff, device):
+    eval_data = pd.read_csv(os.path.join(MERGED_DATA_DIR, split_csv))
+    batch_size = args.batch_size
+    topk = [5, 10]
+    total_samples = 0
+    hit_purchase = np.zeros(len(topk))
+    ndcg_purchase = np.zeros(len(topk))
+    losses = []
+    movie_seq = eval_data['movie_seq'].apply(lambda x: list(map(int, eval(x)))).tolist()
+    movie_len = eval_data['movie_len'].values if 'movie_len' in eval_data.columns else np.array(
+        [len(eval(x)) for x in eval_data['movie_seq'].tolist()])
+    movie_target = eval_data['movie_target'].values
+    genre_seq = eval_data['genre_seq'].apply(lambda x: list(map(int, eval(x)))).tolist()
+    genre_target = eval_data['genre_target'].values
+
+    for i in range(0, len(movie_seq), batch_size):
+        seq_batch = torch.LongTensor(movie_seq[i:i + batch_size]).to(device)
+        len_seq_batch = torch.LongTensor(movie_len[i:i + batch_size]).to(device)
+        target_batch = torch.LongTensor(movie_target[i:i + batch_size]).to(device)
+        genre_seq_batch = torch.LongTensor(genre_seq[i:i + batch_size]).to(device)
+        genre_target_batch = torch.LongTensor(genre_target[i:i + batch_size]).to(device)
+
+        # Movie branch:
+        x_start = model.cacu_x(target_batch)
+        h = model.cacu_h(seq_batch, len_seq_batch, args.p)
+        n = torch.randint(0, args.timesteps, (seq_batch.shape[0],), device=device).long()
+        # Genre branch:
+        n_g = torch.randint(0, genre_diff.timesteps, (seq_batch.shape[0],), device=device).long()
+        genre_x_start = genre_model.cacu_x(genre_target_batch)
+        genre_h = genre_model.cacu_h(genre_seq_batch, len_seq_batch, args.p)
+        _, genre_predicted_x = genre_diff.p_losses(genre_model, genre_x_start, genre_h, n_g, loss_type='l2')
+
+        loss1, predicted_x = diff.p_losses(model, x_start, h, n, genres_embd=genre_predicted_x, loss_type='l2')
+        predicted_items = model.decoder(predicted_x)
+        focal_loss = FocalLoss(alpha=0.1, gamma=5)
+        loss2 = focal_loss(predicted_items, target_batch)
+        loss = loss1 + loss2/2
+        losses.append(loss.item())
+
+        prediction = torch.softmax(predicted_items, dim=-1)
+        _, topK = prediction.topk(10, dim=1, largest=True, sorted=True)
+        topK = topK.cpu().detach().numpy()
+        calculate_hit(target_batch, topK, topk, hit_purchase, ndcg_purchase)
+        total_samples += len(target_batch)
+
+    avg_loss = np.mean(losses) if losses else 0.0
+    hr_list = hit_purchase / total_samples
+    ndcg_list = ndcg_purchase / total_samples
+    print('{:<10s} {:<10s} {:<10s} {:<10s}'.format(
+        'HR@' + str(topk[0]), 'NDCG@' + str(topk[0]),
+        'HR@' + str(topk[1]), 'NDCG@' + str(topk[1])))
+    print('{:<10.6f} {:<10.6f} {:<10.6f} {:<10.6f}'.format(
+        hr_list[0], ndcg_list[0], hr_list[1], ndcg_list[1]))
+    print(f'Loss: {avg_loss:.4f}')
+
+    return {'loss': avg_loss, 'HR5': hr_list[0], 'NDCG5': ndcg_list[0],
+            'HR10': hr_list[1], 'NDCG10': ndcg_list[1]}
 
 # =============================================================================
 # 9. TRAINING FUNCTION FOR ONE FOLD (with Genre Integration)
@@ -372,12 +364,9 @@ def train_fold(fold):
     train_csv = f"train_fold{fold}.df"
     val_csv = f"val_fold{fold}.df"
     test_csv = f"test_fold{fold}.df"
-
     train_df = pd.read_csv(os.path.join(MERGED_DATA_DIR, train_csv))
     val_df = pd.read_csv(os.path.join(MERGED_DATA_DIR, val_csv))
     test_df = pd.read_csv(os.path.join(MERGED_DATA_DIR, test_csv))
-
-    # Instead of computing vocab sizes from train_df, read them from statics.csv.
     statics_file = os.path.join(MERGED_DATA_DIR, "statics.csv")
     if os.path.exists(statics_file):
         statics_df = pd.read_csv(statics_file)
@@ -393,18 +382,12 @@ def train_fold(fold):
             statics = dict(zip(statics_df["statistic"], statics_df["value"]))
             movie_vocab_size_dynamic = int(statics["num_movies"])
             genre_vocab_size_dynamic = int(statics["num_genres"])
-
     train_dataset = MovieDataset(train_df)
     val_dataset = MovieDataset(val_df)
     test_dataset = MovieDataset(test_df)
-
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
-
-    # Initialize the movie branch model using the dynamic movie vocab size from statics.
     model = MovieTenc(args.hidden_factor, 4000, seq_size, args.dropout_rate, args.diffuser_type, device)
     diff = MovieDiffusion(args.timesteps, args.beta_start, args.beta_end, args.w)
-
-    # Initialize the genre branch.
     genre_model = Tenc(args.hidden_factor, genre_vocab_size_dynamic, seq_size, args.dropout_rate, args.diffuser_type,
                        device)
     genre_diff = diffusion(100, args.beta_start, args.beta_end, args.w)
@@ -424,9 +407,9 @@ def train_fold(fold):
     elif args.optimizer == 'rmsprop':
         optimizer = optim.RMSprop(model.parameters(), lr=args.lr, eps=1e-3, weight_decay=args.l2_decay)
     else:
-        optimizer = optim.Adam(model.parameters(), lr=args.lr, eps=1e-6, weight_decay=args.l2_decay)
+        optimizer = optim.Adam(model.parameters(), lr=args.lr, eps=1e-3, weight_decay=args.l2_decay)
 
-    scheduler = lr_scheduler.StepLR(optimizer, step_size=20, gamma=2)
+    scheduler = lr_scheduler.StepLR(optimizer, step_size=5, gamma=1)
 
     # Training loop: at every 10 epochs, evaluate on validation and test sets.
     for epoch in range(args.epoch):
@@ -453,9 +436,9 @@ def train_fold(fold):
             # Diffusion loss for movie branch conditioned on genre branch output.
             loss1, predicted_x = diff.p_losses(model, x_start, h, n, genres_embd=genre_predicted_x, loss_type='l2')
             predicted_items = model.decoder(predicted_x)
-            focal_loss = FocalLoss(alpha=0.5, gamma=7)
+            focal_loss = FocalLoss(alpha=0.1, gamma=5)
             loss2 = focal_loss(predicted_items, target_batch)
-            loss = loss2 / 4
+            loss = loss1 + loss2/2
             loss.backward()
             optimizer.step()
         fold_metrics.add_train_loss(epoch + 1, loss.item())
@@ -582,6 +565,10 @@ def main():
             f.write(str(tuning_summary))
         print("Tuning summary saved in ./tune/movie_tuning_summary.txt")
     else:
+        args.lr = 0.01
+        args.optimizer = "adamw"
+        args.timesteps = 400
+
         # Full 10-Fold CV mode.
         fold_metrics_list = []
         fold_val_metrics = []
