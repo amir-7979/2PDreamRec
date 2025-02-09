@@ -45,10 +45,10 @@ def parse_args():
     parser.add_argument('--timesteps', type=int, default=100, help='Timesteps for diffusion.')
     parser.add_argument('--beta_end', type=float, default=0.02, help='Beta end of diffusion.')
     parser.add_argument('--beta_start', type=float, default=0.0001, help='Beta start of diffusion.')
-    parser.add_argument('--lr', type=float, default=0.001, help='Learning rate.')
-    parser.add_argument('--l2_decay', type=float, default=0.3, help='L2 loss regularization coefficient.')
+    parser.add_argument('--lr', type=float, default=0.01, help='Learning rate.')
+    parser.add_argument('--l2_decay', type=float, default=0.01, help='L2 loss regularization coefficient.')
     parser.add_argument('--cuda', type=int, default=0, help='CUDA device id.')
-    parser.add_argument('--dropout_rate', type=float, default=0.3, help='Dropout rate.')
+    parser.add_argument('--dropout_rate', type=float, default=0.01, help='Dropout rate.')
     parser.add_argument('--w', type=float, default=2.0, help='Weight used in x_start update inside sampler.')
     parser.add_argument('--p', type=float, default=0.1, help='Probability used in cacu_h for random dropout.')
     parser.add_argument('--report_epoch', type=bool, default=True, help='Whether to report metrics each epoch.')
@@ -118,27 +118,6 @@ class MovieDataset(Dataset):
             return seq, length, target
 
 
-def pad_or_truncate(seq, desired_length):
-    if len(seq) > desired_length:
-        return seq[-desired_length:]
-    elif len(seq) < desired_length:
-        return [0] * (desired_length - len(seq)) + seq
-    else:
-        return seq
-
-
-def collate_fn(batch):
-    seq_size = 10  # fixed sequence length
-    movie_seqs, len_seqs, movie_targets, genre_seqs, genre_targets = zip(*batch)
-    movie_seqs = [pad_or_truncate(seq.tolist(), seq_size) for seq in movie_seqs]
-    len_seqs = [seq_size] * len(movie_seqs)
-    genre_seqs = [pad_or_truncate(seq.tolist(), seq_size) for seq in genre_seqs]
-    movie_seqs = torch.tensor(movie_seqs, dtype=torch.long)
-    len_seqs = torch.tensor(len_seqs, dtype=torch.long)
-    movie_targets = torch.tensor(movie_targets, dtype=torch.long)
-    genre_seqs = torch.tensor(genre_seqs, dtype=torch.long)
-    genre_targets = torch.tensor(genre_targets, dtype=torch.long)
-    return movie_seqs, len_seqs, movie_targets, genre_seqs, genre_targets
 
 
 # =============================================================================
@@ -331,9 +310,10 @@ def evaluate(model, genre_model, genre_diff, split_csv, diff, device):
 
         loss1, predicted_x = diff.p_losses(model, x_start, h, n, genres_embd=genre_predicted_x, loss_type='l2')
         predicted_items = model.decoder(predicted_x)
-        focal_loss = FocalLoss(alpha=0.1, gamma=5)
+        focal_loss = FocalLoss(alpha=0.5, gamma=5)
+
         loss2 = focal_loss(predicted_items, target_batch)
-        loss = loss1 + loss2/2
+        loss =loss2
         losses.append(loss.item())
 
         prediction = torch.softmax(predicted_items, dim=-1)
@@ -386,7 +366,7 @@ def train_fold(fold):
     val_dataset = MovieDataset(val_df)
     test_dataset = MovieDataset(test_df)
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
-    model = MovieTenc(args.hidden_factor, 4000, seq_size, args.dropout_rate, args.diffuser_type, device)
+    model = MovieTenc(args.hidden_factor, 3880, seq_size, args.dropout_rate, args.diffuser_type, device)
     diff = MovieDiffusion(args.timesteps, args.beta_start, args.beta_end, args.w)
     genre_model = Tenc(args.hidden_factor, genre_vocab_size_dynamic, seq_size, args.dropout_rate, args.diffuser_type,
                        device)
@@ -407,9 +387,10 @@ def train_fold(fold):
     elif args.optimizer == 'rmsprop':
         optimizer = optim.RMSprop(model.parameters(), lr=args.lr, eps=1e-3, weight_decay=args.l2_decay)
     else:
-        optimizer = optim.Adam(model.parameters(), lr=args.lr, eps=1e-3, weight_decay=args.l2_decay)
+        optimizer = optim.Adam(model.parameters(), lr=args.lr, eps=1e-5, weight_decay=args.l2_decay)
 
-    scheduler = lr_scheduler.StepLR(optimizer, step_size=5, gamma=1)
+    scheduler = lr_scheduler.StepLR(optimizer, step_size=10, gamma=1)
+
 
     # Training loop: at every 10 epochs, evaluate on validation and test sets.
     for epoch in range(args.epoch):
@@ -436,9 +417,10 @@ def train_fold(fold):
             # Diffusion loss for movie branch conditioned on genre branch output.
             loss1, predicted_x = diff.p_losses(model, x_start, h, n, genres_embd=genre_predicted_x, loss_type='l2')
             predicted_items = model.decoder(predicted_x)
-            focal_loss = FocalLoss(alpha=0.1, gamma=5)
+            focal_loss = FocalLoss(alpha=0.15, gamma=7)
+
             loss2 = focal_loss(predicted_items, target_batch)
-            loss = loss1 + loss2/2
+            loss =loss2
             loss.backward()
             optimizer.step()
         fold_metrics.add_train_loss(epoch + 1, loss.item())
@@ -566,8 +548,8 @@ def main():
         print("Tuning summary saved in ./tune/movie_tuning_summary.txt")
     else:
         args.lr = 0.01
-        args.optimizer = "adamw"
-        args.timesteps = 400
+        args.optimizer = "rmsprop"
+        args.timesteps = 100
 
         # Full 10-Fold CV mode.
         fold_metrics_list = []
