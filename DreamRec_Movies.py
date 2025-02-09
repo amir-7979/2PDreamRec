@@ -28,6 +28,7 @@ from utility import extract_axis_1, calculate_hit
 # =============================================================================
 MERGED_DATA_DIR = "data"  # directory containing train_fold*.df, val_fold*.df, test_fold*.df
 
+
 ############################################
 # 3. ARGUMENT PARSING AND SETUP
 ############################################
@@ -39,7 +40,7 @@ def parse_args():
     parser.add_argument('--no-tune', action='store_false', dest='tune', help='Disable tuning.')
     parser.add_argument('--epoch', type=int, default=100, help='Number of epochs per fold.')
     parser.add_argument('--random_seed', type=int, default=100, help='Random seed.')
-    parser.add_argument('--batch_size', type=int, default=512, help='Batch size.')
+    parser.add_argument('--batch_size', type=int, default=128, help='Batch size.')
     parser.add_argument('--hidden_factor', type=int, default=64, help='Embedding/hidden size.')
     parser.add_argument('--timesteps', type=int, default=100, help='Timesteps for diffusion.')
     parser.add_argument('--beta_end', type=float, default=0.02, help='Beta end of diffusion.')
@@ -58,7 +59,9 @@ def parse_args():
     parser.add_argument('--descri', type=str, default='', help='Description of the run.')
     return parser.parse_args()
 
+
 args = parse_args()
+
 
 def setup_seed(seed):
     torch.manual_seed(seed)
@@ -67,9 +70,11 @@ def setup_seed(seed):
     random.seed(seed)
     torch.backends.cudnn.deterministic = True
 
+
 setup_seed(args.random_seed)
 device = torch.device(f"cuda:{args.cuda}" if torch.cuda.is_available() else "cpu")
 print(f"Using device: {device}")
+
 
 ############################################
 # 4. DATASET DEFINITION
@@ -84,6 +89,7 @@ class MovieDataset(Dataset):
       - genre_seq: string representing a list of genre IDs for the movies in the sequence
       - genre_target: target genre ID
     """
+
     def __init__(self, dataframe):
         self.movie_seq = dataframe['movie_seq'].tolist()
         if 'movie_len' in dataframe.columns:
@@ -111,6 +117,7 @@ class MovieDataset(Dataset):
         else:
             return seq, length, target
 
+
 def pad_or_truncate(seq, desired_length):
     if len(seq) > desired_length:
         return seq[-desired_length:]
@@ -118,6 +125,7 @@ def pad_or_truncate(seq, desired_length):
         return [0] * (desired_length - len(seq)) + seq
     else:
         return seq
+
 
 def collate_fn(batch):
     seq_size = 10  # fixed sequence length
@@ -132,6 +140,7 @@ def collate_fn(batch):
     genre_targets = torch.tensor(genre_targets, dtype=torch.long)
     return movie_seqs, len_seqs, movie_targets, genre_seqs, genre_targets
 
+
 # =============================================================================
 # 5. LOSS FUNCTION: FocalLoss
 # =============================================================================
@@ -140,11 +149,13 @@ class FocalLoss(nn.Module):
         super(FocalLoss, self).__init__()
         self.alpha = alpha
         self.gamma = gamma
+
     def forward(self, inputs, targets):
         ce_loss = F.cross_entropy(inputs, targets, reduction="none")
         pt = torch.exp(-ce_loss)
         focal_loss = self.alpha * (1 - pt) ** self.gamma * ce_loss
         return focal_loss.mean()
+
 
 # =============================================================================
 # 6. EVALUATION FUNCTION (with Genre Integration)
@@ -171,11 +182,11 @@ def evaluate(model, genre_model, genre_diff, split_csv, diff, device):
     genre_target = eval_data['genre_target'].values
 
     for i in range(0, len(movie_seq), batch_size):
-        seq_batch = torch.LongTensor(movie_seq[i:i+batch_size]).to(device)
-        len_seq_batch = torch.LongTensor(movie_len[i:i+batch_size]).to(device)
-        target_batch = torch.LongTensor(movie_target[i:i+batch_size]).to(device)
-        genre_seq_batch = torch.LongTensor(genre_seq[i:i+batch_size]).to(device)
-        genre_target_batch = torch.LongTensor(genre_target[i:i+batch_size]).to(device)
+        seq_batch = torch.LongTensor(movie_seq[i:i + batch_size]).to(device)
+        len_seq_batch = torch.LongTensor(movie_len[i:i + batch_size]).to(device)
+        target_batch = torch.LongTensor(movie_target[i:i + batch_size]).to(device)
+        genre_seq_batch = torch.LongTensor(genre_seq[i:i + batch_size]).to(device)
+        genre_target_batch = torch.LongTensor(genre_target[i:i + batch_size]).to(device)
 
         # Movie branch:
         x_start = model.cacu_x(target_batch)
@@ -213,6 +224,7 @@ def evaluate(model, genre_model, genre_diff, split_csv, diff, device):
     return {'loss': avg_loss, 'HR5': hr_list[0], 'NDCG5': ndcg_list[0],
             'HR10': hr_list[1], 'NDCG10': ndcg_list[1]}
 
+
 # =============================================================================
 # 7. METRICS CLASSES (Fold and Average)
 # =============================================================================
@@ -220,7 +232,7 @@ class FoldMetrics:
     def __init__(self, fold_number):
         self.fold_number = fold_number
         self.train_losses = []  # list of tuples: (epoch, loss)
-        self.val_metrics = {}   # dict: epoch -> metrics dict
+        self.val_metrics = {}  # dict: epoch -> metrics dict
         self.test_metrics = {}  # dict: epoch -> metrics dict
 
     def add_train_loss(self, epoch, loss):
@@ -243,6 +255,7 @@ class FoldMetrics:
             s += f"{epoch}\t{train_loss:.4f}\t{val['loss']:.4f}\t{test_loss:.4f}\t{test['HR5']:.4f}\t{test['NDCG5']:.4f}\t{test['HR10']:.4f}\t{test['NDCG10']:.4f}\n"
         return s
 
+
 class AverageMetrics:
     def __init__(self):
         self.avg_train_loss = {}
@@ -261,11 +274,13 @@ class AverageMetrics:
 
     def compute_averages(self):
         self.avg_train_loss = {epoch: np.mean(losses) for epoch, losses in self.avg_train_loss.items()}
+
         def avg_dict(metrics_list):
             avg_d = {}
             for key in metrics_list[0].keys():
                 avg_d[key] = np.mean([m[key] for m in metrics_list])
             return avg_d
+
         self.avg_val_metrics = {epoch: avg_dict(metrics_list) for epoch, metrics_list in self.avg_val_metrics.items()}
         self.avg_test_metrics = {epoch: avg_dict(metrics_list) for epoch, metrics_list in self.avg_test_metrics.items()}
 
@@ -281,6 +296,7 @@ class AverageMetrics:
                   f"{test['NDCG5']:.4f}\t{test['HR10']:.4f}\t{test['NDCG10']:.4f}\n")
         return s
 
+
 # =============================================================================
 # 8. MODIFIED TUNING CLASSES (Recording lists per candidate)
 # =============================================================================
@@ -289,15 +305,16 @@ class TuningMetric:
     Records, for each candidate, the list of HR@10 values at each evaluation checkpoint
     (e.g. epochs 10,20,...,100) from each fold.
     """
+
     def __init__(self, name, values):
-        self.name = name            # e.g., 'lr'
-        self.values = values        # candidate values list
+        self.name = name  # e.g., 'lr'
+        self.values = values  # candidate values list
         self.eval_dict = defaultdict(lambda: defaultdict(list))
         self.best_value = None
 
     def record(self, candidate, fold_hr10_list):
         for i, hr in enumerate(fold_hr10_list):
-            self.eval_dict[candidate][(i+1)*10].append(hr)
+            self.eval_dict[candidate][(i + 1) * 10].append(hr)
 
     def average(self):
         self.avg_dict = {}
@@ -331,16 +348,20 @@ class TuningMetric:
         s += f"Best candidate: {self.best_value}\n"
         return s
 
+
 class TuningSummary:
     def __init__(self):
         self.metrics = {}
+
     def add_metric(self, tuning_metric: TuningMetric):
         self.metrics[tuning_metric.name] = tuning_metric
+
     def __str__(self):
         s = "Tuning Summary:\n"
         for metric in self.metrics.values():
             s += str(metric) + "\n"
         return s
+
 
 # =============================================================================
 # 9. TRAINING FUNCTION FOR ONE FOLD (with Genre Integration)
@@ -363,22 +384,29 @@ def train_fold(fold):
         statics = dict(zip(statics_df["statistic"], statics_df["value"]))
         movie_vocab_size_dynamic = int(statics["num_movies"])
         genre_vocab_size_dynamic = int(statics["num_genres"])
+        seq_size = int(statics.get("train_seq_length", 10))
+
     else:
-        movie_vocab_size_dynamic, genre_vocab_size_dynamic = compute_vocab_sizes(train_df)
+        statics_file = os.path.join(MERGED_DATA_DIR, "statics.csv")
+        if os.path.exists(statics_file):
+            statics_df = pd.read_csv(statics_file)
+            statics = dict(zip(statics_df["statistic"], statics_df["value"]))
+            movie_vocab_size_dynamic = int(statics["num_movies"])
+            genre_vocab_size_dynamic = int(statics["num_genres"])
 
     train_dataset = MovieDataset(train_df)
     val_dataset = MovieDataset(val_df)
     test_dataset = MovieDataset(test_df)
 
-    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, collate_fn=collate_fn)
-    seq_size = 10  # fixed sequence length
+    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
 
     # Initialize the movie branch model using the dynamic movie vocab size from statics.
-    model = MovieTenc(args.hidden_factor, movie_vocab_size_dynamic, seq_size, args.dropout_rate, args.diffuser_type, device)
+    model = MovieTenc(args.hidden_factor, 4000, seq_size, args.dropout_rate, args.diffuser_type, device)
     diff = MovieDiffusion(args.timesteps, args.beta_start, args.beta_end, args.w)
 
     # Initialize the genre branch.
-    genre_model = Tenc(args.hidden_factor, genre_vocab_size_dynamic, seq_size, args.dropout_rate, args.diffuser_type, device)
+    genre_model = Tenc(args.hidden_factor, genre_vocab_size_dynamic, seq_size, args.dropout_rate, args.diffuser_type,
+                       device)
     genre_diff = diffusion(100, args.beta_start, args.beta_end, args.w)
     genre_model, genre_diff = load_genres_predictor(genre_model)
     for param in genre_model.parameters():
@@ -432,7 +460,8 @@ def train_fold(fold):
             optimizer.step()
         fold_metrics.add_train_loss(epoch + 1, loss.item())
         if args.report_epoch:
-            print(f"Fold {fold} Epoch {epoch + 1:03d}; Train loss: {loss.item():.4f}; Time: {Time.strftime('%H:%M:%S', Time.gmtime(Time.time() - start_time))}")
+            print(
+                f"Fold {fold} Epoch {epoch + 1:03d}; Train loss: {loss.item():.4f}; Time: {Time.strftime('%H:%M:%S', Time.gmtime(Time.time() - start_time))}")
         if (epoch + 1) % 10 == 0:
             model.eval()
             with torch.no_grad():
@@ -454,6 +483,7 @@ def train_fold(fold):
     torch.save(model.state_dict(), f"./models/movie_tenc_fold{fold}.pth")
     torch.save(diff, f"./models/movie_diff_fold{fold}.pth")
     return fold_metrics
+
 
 # =============================================================================
 # 10. MAIN FUNCTION WITH IF-ELSE (Tuning vs. Full 10-Fold CV)
@@ -575,6 +605,7 @@ def main():
                 f.write("\n")
             f.write(str(avg_metrics))
         print(f"Results saved in {filename}")
+
 
 if __name__ == '__main__':
     main()
