@@ -15,8 +15,10 @@ import logging
 from Modules_ori import MovieDiffusion, Tenc, MovieTenc, load_genres_predictor, diffusion, Tenc
 from utility import extract_axis_1, calculate_hit
 from recorders import LossRecorder, MetricsRecorder, TuningRecorder, FoldMetrics, AverageMetrics
+
 logging.getLogger().setLevel(logging.INFO)
 MERGED_DATA_DIR = "data"
+
 
 class GenreDataset(Dataset):
     def __init__(self, dataframe):
@@ -34,6 +36,7 @@ class GenreDataset(Dataset):
         return (torch.tensor(eval(self.genre_seq[idx]), dtype=torch.long),
                 torch.tensor(self.genre_len[idx], dtype=torch.long),
                 torch.tensor(self.genre_target[idx], dtype=torch.long))
+
 
 ############################################
 # Argument Parsing and Setup
@@ -64,15 +67,22 @@ def parse_args():
     parser.add_argument('--beta_sche', nargs='?', default='linear', help='Beta schedule: [linear, exp, cosine, sqrt].')
     parser.add_argument('--descri', type=str, default='', help='Description of the run.')
     return parser.parse_args()
+
+
 args = parse_args()
+
+
 def setup_seed(seed):
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
     np.random.seed(seed)
     random.seed(seed)
     torch.backends.cudnn.deterministic = True
+
+
 setup_seed(args.random_seed)
 device = torch.device(f"cuda:{args.cuda}" if torch.cuda.is_available() else "cpu")
+
 
 ############################################
 # Evaluation Function
@@ -91,9 +101,9 @@ def evaluate(model, diff, dataset_split, device):
                  else np.array([len(eval(x)) for x in eval_data['genre_seq'].tolist()]))
     genre_target = eval_data['genre_target'].values
     for i in range(0, len(genre_seq), batch_size):
-        seq_batch = torch.LongTensor(genre_seq[i:i+batch_size]).to(device)
-        len_seq_batch = torch.LongTensor(genre_len[i:i+batch_size]).to(device)
-        target_batch = torch.LongTensor(genre_target[i:i+batch_size]).to(device)
+        seq_batch = torch.LongTensor(genre_seq[i:i + batch_size]).to(device)
+        len_seq_batch = torch.LongTensor(genre_len[i:i + batch_size]).to(device)
+        target_batch = torch.LongTensor(genre_target[i:i + batch_size]).to(device)
         x_start = model.cacu_x(target_batch)
         h = model.cacu_h(seq_batch, len_seq_batch, args.p)
         n = torch.randint(0, args.timesteps, (h.size(0),), device=device).long()
@@ -109,6 +119,7 @@ def evaluate(model, diff, dataset_split, device):
     ndcg_list = ndcg_purchase / total_samples
     return {'loss': avg_loss, 'HR5': hr_list[0], 'NDCG5': ndcg_list[0],
             'HR10': hr_list[1], 'NDCG10': ndcg_list[1]}
+
 
 ############################################
 # Training Function for One Fold
@@ -179,7 +190,8 @@ def train_fold(fold):
         epoch_train_losses.append(avg_epoch_loss)
         fold_metrics.add_train_loss(epoch + 1, avg_epoch_loss)
         if args.report_epoch:
-            print(f"Fold {fold} Epoch {epoch + 1:03d}; Train loss: {avg_epoch_loss:.4f}; Time: {Time.strftime('%H:%M:%S', Time.gmtime(Time.time() - start_time))}")
+            print(
+                f"Fold {fold} Epoch {epoch + 1:03d}; Train loss: {avg_epoch_loss:.4f}; Time: {Time.strftime('%H:%M:%S', Time.gmtime(Time.time() - start_time))}")
         if (epoch + 1) % 10 == 0:
             model.eval()
             with torch.no_grad():
@@ -199,40 +211,65 @@ def train_fold(fold):
     torch.save(diff, f"./models/genre_diff_fold{fold}.pth")
     return fold_metrics
 
+
 def main():
     NUM_FOLDS = 10
     if args.tune:
         tuning_fold = 1
-        args.lr = 0.01
+
+        # Set initial default values (these will be updated by tuning)
+        args.lr = 0.001
         args.optimizer = "adamw"
-        args.timestep = 100
-        lr_candidates = [0.1, 0.01, 0.001, 0.0001, 0.00001]
+        args.timesteps = 400
+
+        # Candidate lists for sequential tuning.
+        lr_candidates = [0.1, 0.01, 0.001, 0.0001]
         optimizer_candidates = ['adam', 'adamw', 'adagrad', 'rmsprop']
         timesteps_candidates = [i * 100 for i in range(1, 6)]
-        tuning_lr_recorder = TuningRecorder("lr", save_dir="category")
-        tuning_optimizer_recorder = TuningRecorder("optimizer", save_dir="category")
-        tuning_timesteps_recorder = TuningRecorder("timesteps", save_dir="category")
+
+        # Create TuningRecorder objects with candidate lists and save_dir "item".
+        tuning_lr_recorder = TuningRecorder("lr", lr_candidates, save_dir="category")
+        tuning_optimizer_recorder = TuningRecorder("optimizer", optimizer_candidates, save_dir="category")
+        tuning_timesteps_recorder = TuningRecorder("timesteps", timesteps_candidates, save_dir="category")
+
+        # --- Tune Learning Rate ---
         for candidate in tqdm(lr_candidates, desc="Tuning lr"):
             args.lr = candidate
             fm = train_fold(tuning_fold)
+            # Extract HR@10 from test metrics at each evaluation epoch.
             fold_hr10_list = [fm.test_metrics[epoch]['HR10'] for epoch in sorted(fm.test_metrics.keys())]
             for i, hr in enumerate(fold_hr10_list):
-                tuning_lr_recorder.record(candidate, (i+1)*10, hr)
+                tuning_lr_recorder.record(candidate, (i + 1) * 10, hr)
             print(f"[lr candidate {candidate}] Fold {tuning_fold}: HR@10 = {fold_hr10_list}")
+        best_lr = tuning_lr_recorder.find_best()
+        print("\nBest learning rate found:", best_lr)
+        args.lr = best_lr  # update best learning rate for next stage
+
+        # --- Tune Optimizer (with best learning rate fixed) ---
         for candidate in tqdm(optimizer_candidates, desc="Tuning optimizer"):
             args.optimizer = candidate
             fm = train_fold(tuning_fold)
             fold_hr10_list = [fm.test_metrics[epoch]['HR10'] for epoch in sorted(fm.test_metrics.keys())]
             for i, hr in enumerate(fold_hr10_list):
-                tuning_optimizer_recorder.record(candidate, (i+1)*10, hr)
+                tuning_optimizer_recorder.record(candidate, (i + 1) * 10, hr)
             print(f"[optimizer candidate {candidate}] Fold {tuning_fold}: HR@10 = {fold_hr10_list}")
+        best_optimizer = tuning_optimizer_recorder.find_best()
+        print("\nBest optimizer found:", best_optimizer)
+        args.optimizer = best_optimizer
+
+        # --- Tune Timesteps (with best lr and optimizer fixed) ---
         for candidate in tqdm(timesteps_candidates, desc="Tuning timesteps"):
             args.timesteps = candidate
             fm = train_fold(tuning_fold)
             fold_hr10_list = [fm.test_metrics[epoch]['HR10'] for epoch in sorted(fm.test_metrics.keys())]
             for i, hr in enumerate(fold_hr10_list):
-                tuning_timesteps_recorder.record(candidate, (i+1)*10, hr)
+                tuning_timesteps_recorder.record(candidate, (i + 1) * 10, hr)
             print(f"[timesteps candidate {candidate}] Fold {tuning_fold}: HR@10 = {fold_hr10_list}")
+        best_timesteps = tuning_timesteps_recorder.find_best()
+        print("\nBest timesteps found:", best_timesteps)
+        args.timesteps = best_timesteps  # update best timesteps
+
+        # --- Save and Plot Tuning Results ---
         os.makedirs("./category", exist_ok=True)
         tuning_lr_recorder.save_to_file("./category/tuning_lr.json")
         tuning_optimizer_recorder.save_to_file("./category/tuning_optimizer.json")
@@ -244,16 +281,29 @@ def main():
             f.write("Detailed fold metrics (tuning mode, fold 1):\n")
             f.write(str(train_fold(tuning_fold)))
         print("Tuning fold metrics saved to ./category/fold_metrics_tune.txt")
+
+        # Save best candidate values to a JSON file.
+        best_candidates = {
+            "lr": best_lr,
+            "optimizer": best_optimizer,
+            "timesteps": best_timesteps
+        }
+        with open("./category/best_candidates.json", "w") as f:
+            json.dump(best_candidates, f, indent=2)
+        print("Best candidates saved to ./category/best_candidates.json")
+
     else:
-        args.lr = 0.01
+        # --------------------- Full 10-Fold CV Mode ---------------------
+        args.lr = 0.001
         args.optimizer = "adamw"
-        args.timestep = 100
+        args.timesteps = 400
         fold_metrics_list = []
         for fold in range(1, NUM_FOLDS + 1):
             fm = train_fold(fold)
             fold_metrics_list.append(fm)
             print("Results for Fold", fold)
             print(fm)
+            os.makedirs("./category", exist_ok=True)
             with open(f"./category/fold{fold}_metrics.txt", "w") as f:
                 f.write(str(fm))
         avg_metrics = AverageMetrics()
@@ -265,6 +315,7 @@ def main():
         with open("category/average_metrics.txt", "w") as f:
             f.write(str(avg_metrics))
         print("Full average metrics saved to category/average_metrics.txt")
+
         loss_recorder = LossRecorder(save_dir="category")
         for fm in fold_metrics_list:
             sorted_train = [loss for (ep, loss) in sorted(fm.train_losses, key=lambda x: x[0])]
@@ -277,11 +328,13 @@ def main():
         np.savetxt("category/avg_train_loss.txt", np.array([avg_train[e] for e in epochs_train]))
         print("Average training losses saved to category/avg_train_loss.txt")
         loss_recorder.plot_losses()
+
         metrics_recorder = MetricsRecorder(save_dir="category")
         for fm in fold_metrics_list:
             metrics_recorder.add_fold(fm)
         metrics_recorder.save_to_file("category/average_test_metrics.txt")
         metrics_recorder.plot_metrics()
+
 
 if __name__ == '__main__':
     main()

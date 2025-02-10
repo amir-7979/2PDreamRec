@@ -199,12 +199,19 @@ class MetricsRecorder:
         plt.grid(True)
         plt.show()
 
+import os
+import json
+import numpy as np
+from collections import defaultdict
+import matplotlib.pyplot as plt
+
 class TuningRecorder:
     """
     Records tuning metrics (HR@10) for each candidate parameter over evaluation epochs.
     """
-    def __init__(self, parameter_name, save_dir=None):
+    def __init__(self, parameter_name, candidates=None, save_dir=None):
         self.parameter_name = parameter_name
+        self.candidates = candidates if candidates is not None else []
         self.data = defaultdict(lambda: defaultdict(list))
         self.save_dir = save_dir if save_dir is not None else "."
 
@@ -246,10 +253,30 @@ class TuningRecorder:
         for i, (candidate, epoch_dict) in enumerate(sorted(avg_data.items())):
             epochs = sorted(epoch_dict.keys())
             hr_values = [epoch_dict[e] for e in epochs]
-            plt.plot(epochs, hr_values, color=colors[i % len(colors)], linestyle='-', label=f"{self.parameter_name}={candidate}")
+            plt.plot(epochs, hr_values, color=colors[i % len(colors)], linestyle='-',
+                     label=f"{self.parameter_name}={candidate}")
         plt.xlabel("Evaluation Epoch")
         plt.ylabel("Average HR@10")
         plt.title(f"Tuning Results for {self.parameter_name}")
         plt.legend()
         plt.grid(True)
         plt.show()
+
+    def find_best(self):
+        """
+        Finds the candidate with the highest average HR@10 at evaluation epoch 100.
+        If epoch 100 is not available for a candidate, it uses the maximum average among its epochs.
+        """
+        avg_data = self.compute_average()
+        best = -np.inf
+        best_candidate = None
+        for candidate, epoch_dict in avg_data.items():
+            if 100 in epoch_dict:
+                avg_final = epoch_dict[100]
+            else:
+                avg_final = max(epoch_dict.values()) if epoch_dict else -np.inf
+            if avg_final > best:
+                best = avg_final
+                best_candidate = candidate
+        return best_candidate
+
