@@ -264,41 +264,64 @@ def train_fold(fold):
 # =============================================================================
 # 9. MAIN FUNCTION WITH IF-ELSE (Tuning vs. Full 10-Fold CV)
 # =============================================================================
-
 def main():
     NUM_FOLDS = 10
     if args.tune:
+        tuning_fold = 1
+
+        # Set initial default values (these will be updated by tuning)
         args.lr = 0.001
         args.optimizer = "adamw"
-        args.timestep = 400
-        tuning_fold = 1
+        args.timesteps = 400
+
+        # Candidate lists for sequential tuning.
         lr_candidates = [0.1, 0.01, 0.001, 0.0001, 0.00001]
         optimizer_candidates = ['adam', 'adamw', 'adagrad', 'rmsprop']
         timesteps_candidates = [i * 100 for i in range(1, 6)]
-        tuning_lr_recorder = TuningRecorder("lr", save_dir="item")
-        tuning_optimizer_recorder = TuningRecorder("optimizer", save_dir="item")
-        tuning_timesteps_recorder = TuningRecorder("timesteps", save_dir="item")
+
+        # Create TuningRecorder objects with candidate lists and save_dir "item".
+        tuning_lr_recorder = TuningRecorder("lr", lr_candidates, save_dir="item")
+        tuning_optimizer_recorder = TuningRecorder("optimizer", optimizer_candidates, save_dir="item")
+        tuning_timesteps_recorder = TuningRecorder("timesteps", timesteps_candidates, save_dir="item")
+
+        # --- Tune Learning Rate ---
         for candidate in tqdm(lr_candidates, desc="Tuning lr"):
             args.lr = candidate
             fm = train_fold(tuning_fold)
+            # Extract HR@10 from test metrics at each evaluation epoch.
             fold_hr10_list = [fm.test_metrics[epoch]['HR10'] for epoch in sorted(fm.test_metrics.keys())]
             for i, hr in enumerate(fold_hr10_list):
-                tuning_lr_recorder.record(candidate, (i+1)*10, hr)
+                tuning_lr_recorder.record(candidate, (i + 1) * 10, hr)
             print(f"[lr candidate {candidate}] Fold {tuning_fold}: HR@10 = {fold_hr10_list}")
+        best_lr = tuning_lr_recorder.find_best()
+        print("\nBest learning rate found:", best_lr)
+        args.lr = best_lr  # update best learning rate for next stage
+
+        # --- Tune Optimizer (with best learning rate fixed) ---
         for candidate in tqdm(optimizer_candidates, desc="Tuning optimizer"):
             args.optimizer = candidate
             fm = train_fold(tuning_fold)
             fold_hr10_list = [fm.test_metrics[epoch]['HR10'] for epoch in sorted(fm.test_metrics.keys())]
             for i, hr in enumerate(fold_hr10_list):
-                tuning_optimizer_recorder.record(candidate, (i+1)*10, hr)
+                tuning_optimizer_recorder.record(candidate, (i + 1) * 10, hr)
             print(f"[optimizer candidate {candidate}] Fold {tuning_fold}: HR@10 = {fold_hr10_list}")
+        best_optimizer = tuning_optimizer_recorder.find_best()
+        print("\nBest optimizer found:", best_optimizer)
+        args.optimizer = best_optimizer  # update best optimizer
+
+        # --- Tune Timesteps (with best lr and optimizer fixed) ---
         for candidate in tqdm(timesteps_candidates, desc="Tuning timesteps"):
             args.timesteps = candidate
             fm = train_fold(tuning_fold)
             fold_hr10_list = [fm.test_metrics[epoch]['HR10'] for epoch in sorted(fm.test_metrics.keys())]
             for i, hr in enumerate(fold_hr10_list):
-                tuning_timesteps_recorder.record(candidate, (i+1)*10, hr)
+                tuning_timesteps_recorder.record(candidate, (i + 1) * 10, hr)
             print(f"[timesteps candidate {candidate}] Fold {tuning_fold}: HR@10 = {fold_hr10_list}")
+        best_timesteps = tuning_timesteps_recorder.find_best()
+        print("\nBest timesteps found:", best_timesteps)
+        args.timesteps = best_timesteps  # update best timesteps
+
+        # --- Save and Plot Tuning Results ---
         os.makedirs("./item", exist_ok=True)
         tuning_lr_recorder.save_to_file("./item/tuning_lr.json")
         tuning_optimizer_recorder.save_to_file("./item/tuning_optimizer.json")
@@ -310,16 +333,29 @@ def main():
             f.write("Detailed fold metrics (tuning mode, fold 1):\n")
             f.write(str(train_fold(tuning_fold)))
         print("Tuning fold metrics saved to ./item/fold_metrics_tune.txt")
+
+        # Save best candidate values to a JSON file.
+        best_candidates = {
+            "lr": best_lr,
+            "optimizer": best_optimizer,
+            "timesteps": best_timesteps
+        }
+        with open("./item/best_candidates.json", "w") as f:
+            json.dump(best_candidates, f, indent=2)
+        print("Best candidates saved to ./item/best_candidates.json")
+
     else:
+        # --------------------- Full 10-Fold CV Mode ---------------------
         args.lr = 0.001
         args.optimizer = "adamw"
-        args.timestep = 400
+        args.timesteps = 400
         fold_metrics_list = []
         for fold in range(1, NUM_FOLDS + 1):
             fm = train_fold(fold)
             fold_metrics_list.append(fm)
             print("Results for Fold", fold)
             print(fm)
+            os.makedirs("./item", exist_ok=True)
             with open(f"./item/fold{fold}_metrics.txt", "w") as f:
                 f.write(str(fm))
         avg_metrics = AverageMetrics()
@@ -331,6 +367,7 @@ def main():
         with open("item/average_metrics.txt", "w") as f:
             f.write(str(avg_metrics))
         print("Full average metrics saved to item/average_metrics.txt")
+
         loss_recorder = LossRecorder(save_dir="item")
         for fm in fold_metrics_list:
             sorted_train = [loss for (ep, loss) in sorted(fm.train_losses, key=lambda x: x[0])]
@@ -343,11 +380,13 @@ def main():
         np.savetxt("item/avg_train_loss.txt", np.array([avg_train[e] for e in epochs_train]))
         print("Average training losses saved to item/avg_train_loss.txt")
         loss_recorder.plot_losses()
+
         metrics_recorder = MetricsRecorder(save_dir="item")
         for fm in fold_metrics_list:
             metrics_recorder.add_fold(fm)
         metrics_recorder.save_to_file("item/average_test_metrics.txt")
         metrics_recorder.plot_metrics()
+
 
 if __name__ == '__main__':
     main()
