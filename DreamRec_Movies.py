@@ -15,17 +15,14 @@ import random
 import logging
 from Modules_ori import MovieTenc, MovieDiffusion, Tenc, diffusion, load_genres_predictor
 from utility import extract_axis_1, calculate_hit
-
 from recorders import LossRecorder, MetricsRecorder, TuningRecorder, FoldMetrics, AverageMetrics
-
-# Set logging level
 logging.getLogger().setLevel(logging.INFO)
+MERGED_DATA_DIR = "data"
 
-MERGED_DATA_DIR = "data"  # Contains train_fold*.df, val_fold*.df, test_fold*.df
+############################################
+# Argument Parsing and Setup
+############################################
 
-# =============================================================================
-# 4. ARGUMENT PARSING AND SETUP
-# =============================================================================
 def parse_args():
     parser = argparse.ArgumentParser(
         description="Run Item Prediction with Diffusion + Focal Loss using 10-Fold CV on merged data."
@@ -63,21 +60,12 @@ def setup_seed(seed):
 
 setup_seed(args.random_seed)
 device = torch.device(f"cuda:{args.cuda}" if torch.cuda.is_available() else "cpu")
-print(f"Using device: {device}")
 
 # =============================================================================
 # 5. DATASET DEFINITION
 # =============================================================================
+
 class MovieDataset(Dataset):
-    """
-    A PyTorch dataset for merged movie data.
-    Expected CSV columns:
-      - movie_seq: string representing a Python list of movie IDs
-      - movie_len: integer sequence length (if missing, computed)
-      - movie_target: target movie ID
-      - genre_seq: string representing a list of genre IDs for the movies in the sequence
-      - genre_target: target genre ID
-    """
     def __init__(self, dataframe):
         self.movie_seq = dataframe['movie_seq'].tolist()
         if 'movie_len' in dataframe.columns:
@@ -108,6 +96,7 @@ class MovieDataset(Dataset):
 # =============================================================================
 # 6. LOSS FUNCTION: FocalLoss
 # =============================================================================
+
 class FocalLoss(nn.Module):
     def __init__(self, alpha=1, gamma=2):
         super(FocalLoss, self).__init__()
@@ -123,6 +112,7 @@ class FocalLoss(nn.Module):
 # =============================================================================
 # 7. EVALUATION FUNCTION (with Genre Integration)
 # =============================================================================
+
 def evaluate(model, genre_model, genre_diff, split_csv, diff, device):
     eval_data = pd.read_csv(os.path.join(MERGED_DATA_DIR, split_csv))
     batch_size = args.batch_size
@@ -131,44 +121,36 @@ def evaluate(model, genre_model, genre_diff, split_csv, diff, device):
     hit_purchase = np.zeros(len(topk))
     ndcg_purchase = np.zeros(len(topk))
     losses = []
-
     movie_seq = eval_data['movie_seq'].apply(lambda x: list(map(int, eval(x)))).tolist()
     movie_len = (eval_data['movie_len'].values if 'movie_len' in eval_data.columns
                  else np.array([len(eval(x)) for x in eval_data['movie_seq'].tolist()]))
     movie_target = eval_data['movie_target'].values
     genre_seq = eval_data['genre_seq'].apply(lambda x: list(map(int, eval(x)))).tolist()
     genre_target = eval_data['genre_target'].values
-
     for i in range(0, len(movie_seq), batch_size):
         seq_batch = torch.LongTensor(movie_seq[i:i+batch_size]).to(device)
         len_seq_batch = torch.LongTensor(movie_len[i:i+batch_size]).to(device)
         target_batch = torch.LongTensor(movie_target[i:i+batch_size]).to(device)
         genre_seq_batch = torch.LongTensor(genre_seq[i:i+batch_size]).to(device)
         genre_target_batch = torch.LongTensor(genre_target[i:i+batch_size]).to(device)
-
-        # Movie branch:
         x_start = model.cacu_x(target_batch)
         h = model.cacu_h(seq_batch, len_seq_batch, args.p)
         n = torch.randint(0, args.timesteps, (seq_batch.shape[0],), device=device).long()
-        # Genre branch:
         n_g = torch.randint(0, genre_diff.timesteps, (seq_batch.shape[0],), device=device).long()
         genre_x_start = genre_model.cacu_x(genre_target_batch)
         genre_h = genre_model.cacu_h(genre_seq_batch, len_seq_batch, args.p)
         _, genre_predicted_x = genre_diff.p_losses(genre_model, genre_x_start, genre_h, n_g, loss_type='l2')
-        # Diffusion loss for movie branch (conditioned on genre branch output).
         loss1, predicted_x = diff.p_losses(model, x_start, h, n, genres_embd=genre_predicted_x, loss_type='l2')
         predicted_items = model.decoder(predicted_x)
         focal_loss = FocalLoss(alpha=0.15, gamma=7)
         loss2 = focal_loss(predicted_items, target_batch)
         loss = loss2
         losses.append(loss.item())
-
         prediction = torch.softmax(predicted_items, dim=-1)
         _, topK = prediction.topk(10, dim=1, largest=True, sorted=True)
         topK = topK.cpu().detach().numpy()
         calculate_hit(target_batch, topK, topk, hit_purchase, ndcg_purchase)
         total_samples += len(target_batch)
-
     avg_loss = np.mean(losses) if losses else 0.0
     hr_list = hit_purchase / total_samples
     ndcg_list = ndcg_purchase / total_samples
@@ -184,6 +166,7 @@ def evaluate(model, genre_model, genre_diff, split_csv, diff, device):
 # =============================================================================
 # 8. TRAINING FUNCTION FOR ONE FOLD (with Genre Integration)
 # =============================================================================
+
 def train_fold(fold):
     print(f"\n========== Fold {fold} ==========")
     fold_metrics = FoldMetrics(fold)
@@ -193,15 +176,11 @@ def train_fold(fold):
     train_df = pd.read_csv(os.path.join(MERGED_DATA_DIR, train_csv))
     val_df = pd.read_csv(os.path.join(MERGED_DATA_DIR, val_csv))
     test_df = pd.read_csv(os.path.join(MERGED_DATA_DIR, test_csv))
-
-    # For Movie branch:
-    from_movie_df = train_df  # use movie data from same CSV
+    from_movie_df = train_df
     train_dataset = MovieDataset(train_df)
     val_dataset = MovieDataset(val_df)
     test_dataset = MovieDataset(test_df)
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
-
-    # Set statics.
     statics_file = os.path.join(MERGED_DATA_DIR, "statics.csv")
     if os.path.exists(statics_file):
         statics_df = pd.read_csv(statics_file)
@@ -213,23 +192,16 @@ def train_fold(fold):
         movie_vocab_size_dynamic = 4000
         genre_vocab_size_dynamic = 18
         seq_size = 10
-
-    # Create the movie (item) branch model and its diffusion process.
     model = MovieTenc(args.hidden_factor, 4000, seq_size, args.dropout_rate, args.diffuser_type, device)
     diff = MovieDiffusion(args.timesteps, args.beta_start, args.beta_end, args.w)
-
-    # Create the genre branch model and diffusion.
     genre_model = Tenc(args.hidden_factor, genre_vocab_size_dynamic, seq_size, args.dropout_rate,
                         args.diffuser_type, device)
     genre_diff = diffusion(100, args.beta_start, args.beta_end, args.w)
     genre_model, genre_diff = load_genres_predictor(genre_model)
     for param in genre_model.parameters():
-        param.requires_grad = False  # Freeze genre branch
-
+        param.requires_grad = False
     model.to(device)
     genre_model.to(device)
-
-    # Set optimizer.
     if args.optimizer == 'adam':
         optimizer = optim.Adam(model.parameters(), lr=args.lr, eps=1e-3, weight_decay=args.l2_decay)
     elif args.optimizer == 'adamw':
@@ -242,8 +214,6 @@ def train_fold(fold):
         optimizer = optim.Adam(model.parameters(), lr=args.lr, eps=1e-5, weight_decay=args.l2_decay)
 
     scheduler = lr_scheduler.StepLR(optimizer, step_size=10, gamma=1)
-
-    # Training loop.
     for epoch in range(args.epoch):
         start_time = Time.time()
         model.train()
@@ -254,18 +224,14 @@ def train_fold(fold):
             target_batch = target_batch.to(device)
             genre_seq_batch = genre_seq_batch.to(device)
             genre_target_batch = genre_target_batch.to(device)
-
             optimizer.zero_grad()
-            # Movie branch forward.
             x_start = model.cacu_x(target_batch)
             h = model.cacu_h(seq_batch, len_seq_batch, args.p)
             n = torch.randint(0, args.timesteps, (seq_batch.shape[0],), device=device).long()
-            # Genre branch forward.
             n_g = torch.randint(0, genre_diff.timesteps, (seq_batch.shape[0],), device=device).long()
             genre_x_start = genre_model.cacu_x(genre_target_batch)
             genre_h = genre_model.cacu_h(genre_seq_batch, len_seq_batch, args.p)
             _, genre_predicted_x = genre_diff.p_losses(genre_model, genre_x_start, genre_h, n_g, loss_type='l2')
-            # Diffusion loss for movie branch conditioned on genre branch output.
             loss1, predicted_x = diff.p_losses(model, x_start, h, n, genres_embd=genre_predicted_x, loss_type='l2')
             predicted_items = model.decoder(predicted_x)
             focal_loss = FocalLoss(alpha=0.15, gamma=7)
@@ -285,13 +251,11 @@ def train_fold(fold):
             fold_metrics.add_val_metrics(epoch + 1, val_dict)
             fold_metrics.add_test_metrics(epoch + 1, test_dict)
             scheduler.step()
-
     with torch.no_grad():
         print(f"Fold {fold}: Final Test Phase")
         final_test = evaluate(model, genre_model, genre_diff, test_csv, diff, device)
         print(f"Fold {fold}: Final Test Loss: {final_test['loss']:.4f}, HR@5: {final_test['HR5']:.4f}")
     fold_metrics.add_test_metrics(args.epoch, final_test)
-
     os.makedirs("./models", exist_ok=True)
     torch.save(model.state_dict(), f"./models/movie_tenc_fold{fold}.pth")
     torch.save(diff, f"./models/movie_diff_fold{fold}.pth")
@@ -304,96 +268,58 @@ def train_fold(fold):
 def main():
     NUM_FOLDS = 10
     if args.tune:
-        # --------------------- Tuning Mode ---------------------
-        args.lr = 0.01
+        args.lr = 0.001
         args.optimizer = "adamw"
-        args.timesteps = 100
+        args.timestep = 400
         tuning_fold = 1
-        lr_candidates = [0.01]
-        optimizer_candidates = ['adamw']
-        timesteps_candidates = [350]
-        # Create TuningRecorder objects with save_dir "item".
-        tuning_lr = TuningRecorder("lr", save_dir="item")
-        tuning_optimizer = TuningRecorder("optimizer", save_dir="item")
-        tuning_timesteps = TuningRecorder("timesteps", save_dir="item")
+        lr_candidates = [0.1, 0.01, 0.001, 0.0001, 0.00001]
+        optimizer_candidates = ['adam', 'adamw', 'adagrad', 'rmsprop']
+        timesteps_candidates = [i * 100 for i in range(1, 6)]
+        tuning_lr_recorder = TuningRecorder("lr", save_dir="item")
+        tuning_optimizer_recorder = TuningRecorder("optimizer", save_dir="item")
+        tuning_timesteps_recorder = TuningRecorder("timesteps", save_dir="item")
         for candidate in tqdm(lr_candidates, desc="Tuning lr"):
             args.lr = candidate
             fm = train_fold(tuning_fold)
             fold_hr10_list = [fm.test_metrics[epoch]['HR10'] for epoch in sorted(fm.test_metrics.keys())]
             for i, hr in enumerate(fold_hr10_list):
-                tuning_lr.record(candidate, (i+1)*10, hr)
+                tuning_lr_recorder.record(candidate, (i+1)*10, hr)
             print(f"[lr candidate {candidate}] Fold {tuning_fold}: HR@10 = {fold_hr10_list}")
         for candidate in tqdm(optimizer_candidates, desc="Tuning optimizer"):
             args.optimizer = candidate
             fm = train_fold(tuning_fold)
             fold_hr10_list = [fm.test_metrics[epoch]['HR10'] for epoch in sorted(fm.test_metrics.keys())]
             for i, hr in enumerate(fold_hr10_list):
-                tuning_optimizer.record(candidate, (i+1)*10, hr)
+                tuning_optimizer_recorder.record(candidate, (i+1)*10, hr)
             print(f"[optimizer candidate {candidate}] Fold {tuning_fold}: HR@10 = {fold_hr10_list}")
         for candidate in tqdm(timesteps_candidates, desc="Tuning timesteps"):
             args.timesteps = candidate
             fm = train_fold(tuning_fold)
             fold_hr10_list = [fm.test_metrics[epoch]['HR10'] for epoch in sorted(fm.test_metrics.keys())]
             for i, hr in enumerate(fold_hr10_list):
-                tuning_timesteps.record(candidate, (i+1)*10, hr)
+                tuning_timesteps_recorder.record(candidate, (i+1)*10, hr)
             print(f"[timesteps candidate {candidate}] Fold {tuning_fold}: HR@10 = {fold_hr10_list}")
-        tuning_lr.average()
-        tuning_optimizer.average()
-        tuning_timesteps.average()
-        print("\nDetailed HR@10 (averaged over fold 1) per evaluation epoch:")
-        print("Learning Rate Candidates:")
-        for candidate in lr_candidates:
-            if candidate in tuning_lr.eval_dict and tuning_lr.eval_dict[candidate]:
-                checkpoints = sorted(tuning_lr.eval_dict[candidate].keys())
-                avg_list = [np.mean(tuning_lr.eval_dict[candidate][cp]) for cp in checkpoints]
-                print(f"  Candidate {candidate}: {avg_list}")
-            else:
-                print(f"  Candidate {candidate}: No evaluation recorded")
-        print("Optimizer Candidates:")
-        for candidate in optimizer_candidates:
-            if candidate in tuning_optimizer.eval_dict and tuning_optimizer.eval_dict[candidate]:
-                checkpoints = sorted(tuning_optimizer.eval_dict[candidate].keys())
-                avg_list = [np.mean(tuning_optimizer.eval_dict[candidate][cp]) for cp in checkpoints]
-                print(f"  Candidate {candidate}: {avg_list}")
-            else:
-                print(f"  Candidate {candidate}: No evaluation recorded")
-        print("Timesteps Candidates:")
-        for candidate in timesteps_candidates:
-            if candidate in tuning_timesteps.eval_dict and tuning_timesteps.eval_dict[candidate]:
-                checkpoints = sorted(tuning_timesteps.eval_dict[candidate].keys())
-                avg_list = [np.mean(tuning_timesteps.eval_dict[candidate][cp]) for cp in checkpoints]
-                print(f"  Candidate {candidate}: {avg_list}")
-            else:
-                print(f"  Candidate {candidate}: No evaluation recorded")
-        best_lr = tuning_lr.find_best()
-        best_optimizer = tuning_optimizer.find_best()
-        best_timesteps = tuning_timesteps.find_best()
-        print("\nTuning complete.")
-        print("Best learning rate:", best_lr)
-        print("Best optimizer:", best_optimizer)
-        print("Best timesteps:", best_timesteps)
         os.makedirs("./item", exist_ok=True)
-        tuning_lr.save_to_file("./item/tuning_lr.json")
-        tuning_optimizer.save_to_file("./item/tuning_optimizer.json")
-        tuning_timesteps.save_to_file("./item/tuning_timesteps.json")
-        tuning_lr.plot()
-        tuning_optimizer.plot()
-        tuning_timesteps.plot()
+        tuning_lr_recorder.save_to_file("./item/tuning_lr.json")
+        tuning_optimizer_recorder.save_to_file("./item/tuning_optimizer.json")
+        tuning_timesteps_recorder.save_to_file("./item/tuning_timesteps.json")
+        tuning_lr_recorder.plot()
+        tuning_optimizer_recorder.plot()
+        tuning_timesteps_recorder.plot()
         with open("./item/fold_metrics_tune.txt", "w") as f:
             f.write("Detailed fold metrics (tuning mode, fold 1):\n")
             f.write(str(train_fold(tuning_fold)))
         print("Tuning fold metrics saved to ./item/fold_metrics_tune.txt")
     else:
-        args.lr = 0.01
+        args.lr = 0.001
         args.optimizer = "adamw"
-        args.timesteps = 100
+        args.timestep = 400
         fold_metrics_list = []
         for fold in range(1, NUM_FOLDS + 1):
             fm = train_fold(fold)
             fold_metrics_list.append(fm)
             print("Results for Fold", fold)
             print(fm)
-            os.makedirs("./item", exist_ok=True)
             with open(f"./item/fold{fold}_metrics.txt", "w") as f:
                 f.write(str(fm))
         avg_metrics = AverageMetrics()
@@ -405,7 +331,6 @@ def main():
         with open("item/average_metrics.txt", "w") as f:
             f.write(str(avg_metrics))
         print("Full average metrics saved to item/average_metrics.txt")
-        # Use LossRecorder to save and plot loss curves.
         loss_recorder = LossRecorder(save_dir="item")
         for fm in fold_metrics_list:
             sorted_train = [loss for (ep, loss) in sorted(fm.train_losses, key=lambda x: x[0])]
@@ -418,7 +343,6 @@ def main():
         np.savetxt("item/avg_train_loss.txt", np.array([avg_train[e] for e in epochs_train]))
         print("Average training losses saved to item/avg_train_loss.txt")
         loss_recorder.plot_losses()
-        # Use MetricsRecorder to record and plot test metrics.
         metrics_recorder = MetricsRecorder(save_dir="item")
         for fm in fold_metrics_list:
             metrics_recorder.add_fold(fm)

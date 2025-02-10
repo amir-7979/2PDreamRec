@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 import os
 import time as Time
 import argparse
@@ -13,23 +12,12 @@ import random
 import json
 import matplotlib.pyplot as plt
 import logging
-
 from Modules_ori import MovieDiffusion, Tenc, MovieTenc, load_genres_predictor, diffusion, Tenc
 from utility import extract_axis_1, calculate_hit
-
-# Import recorder classes (including FoldMetrics and AverageMetrics) from recorders.py
 from recorders import LossRecorder, MetricsRecorder, TuningRecorder, FoldMetrics, AverageMetrics
-
 logging.getLogger().setLevel(logging.INFO)
-
-############################################
-# Directory for Merged Data Splits
-############################################
 MERGED_DATA_DIR = "data"
 
-############################################
-# Dataset Definition (Merged for Genre)
-############################################
 class GenreDataset(Dataset):
     def __init__(self, dataframe):
         self.genre_seq = dataframe['genre_seq'].tolist()
@@ -76,23 +64,20 @@ def parse_args():
     parser.add_argument('--beta_sche', nargs='?', default='linear', help='Beta schedule: [linear, exp, cosine, sqrt].')
     parser.add_argument('--descri', type=str, default='', help='Description of the run.')
     return parser.parse_args()
-
 args = parse_args()
-
 def setup_seed(seed):
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
     np.random.seed(seed)
     random.seed(seed)
     torch.backends.cudnn.deterministic = True
-
 setup_seed(args.random_seed)
 device = torch.device(f"cuda:{args.cuda}" if torch.cuda.is_available() else "cpu")
-print(f"Using device: {device}")
 
 ############################################
 # Evaluation Function
 ############################################
+
 def evaluate(model, diff, dataset_split, device):
     eval_data = pd.read_csv(os.path.join(MERGED_DATA_DIR, dataset_split))
     batch_size = args.batch_size
@@ -128,6 +113,7 @@ def evaluate(model, diff, dataset_split, device):
 ############################################
 # Training Function for One Fold
 ############################################
+
 def train_fold(fold):
     print(f"\n========== Fold {fold} ==========")
     fold_metrics = FoldMetrics(fold)
@@ -217,9 +203,12 @@ def main():
     NUM_FOLDS = 10
     if args.tune:
         tuning_fold = 1
+        args.lr = 0.01
+        args.optimizer = "adamw"
+        args.timestep = 100
         lr_candidates = [0.1, 0.01, 0.001, 0.0001, 0.00001]
         optimizer_candidates = ['adam', 'adamw', 'adagrad', 'rmsprop']
-        timesteps_candidates = [i * 50 for i in range(1, 6)]
+        timesteps_candidates = [i * 100 for i in range(1, 6)]
         tuning_lr_recorder = TuningRecorder("lr", save_dir="category")
         tuning_optimizer_recorder = TuningRecorder("optimizer", save_dir="category")
         tuning_timesteps_recorder = TuningRecorder("timesteps", save_dir="category")
@@ -256,7 +245,7 @@ def main():
             f.write(str(train_fold(tuning_fold)))
         print("Tuning fold metrics saved to ./category/fold_metrics_tune.txt")
     else:
-        args.lr = 0.001
+        args.lr = 0.01
         args.optimizer = "adamw"
         args.timestep = 100
         fold_metrics_list = []
