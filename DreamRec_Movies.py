@@ -142,7 +142,7 @@ def evaluate(model, genre_model, genre_diff, split_csv, diff, device):
         _, genre_predicted_x = genre_diff.p_losses(genre_model, genre_x_start, genre_h, n_g, loss_type='l2')
         loss1, predicted_x = diff.p_losses(model, x_start, h, n, genres_embd=genre_predicted_x, loss_type='l2')
         predicted_items = model.decoder(predicted_x)
-        focal_loss = FocalLoss(alpha=0.15, gamma=7)
+        focal_loss = FocalLoss(alpha=0.13, gamma=6.5)
         loss2 = focal_loss(predicted_items, target_batch)
         loss = loss2
         losses.append(loss.item())
@@ -203,17 +203,17 @@ def train_fold(fold):
     model.to(device)
     genre_model.to(device)
     if args.optimizer == 'adam':
-        optimizer = optim.Adam(model.parameters(), lr=args.lr, eps=1e-3, weight_decay=args.l2_decay)
+        optimizer = optim.Adam(model.parameters(), lr=args.lr, eps=1.2e-3, weight_decay=args.l2_decay)
     elif args.optimizer == 'adamw':
-        optimizer = optim.AdamW(model.parameters(), lr=args.lr, eps=1e-3, weight_decay=args.l2_decay)
+        optimizer = optim.AdamW(model.parameters(), lr=args.lr, eps=1.2e-3, weight_decay=args.l2_decay)
     elif args.optimizer == 'adagrad':
-        optimizer = optim.Adagrad(model.parameters(), lr=args.lr, eps=1e-3, weight_decay=args.l2_decay)
+        optimizer = optim.Adagrad(model.parameters(), lr=args.lr, eps=1.2e-3, weight_decay=args.l2_decay)
     elif args.optimizer == 'rmsprop':
-        optimizer = optim.RMSprop(model.parameters(), lr=args.lr, eps=1e-3, weight_decay=args.l2_decay)
+        optimizer = optim.RMSprop(model.parameters(), lr=args.lr, eps=1.2e-3, weight_decay=args.l2_decay)
     else:
-        optimizer = optim.Adam(model.parameters(), lr=args.lr, eps=1e-3, weight_decay=args.l2_decay)
+        optimizer = optim.Adam(model.parameters(), lr=args.lr, eps=1.2e-3, weight_decay=args.l2_decay)
 
-    scheduler = lr_scheduler.StepLR(optimizer, step_size=10, gamma=1)
+    scheduler = lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=10, T_mult=1)
     for epoch in range(args.epoch):
         start_time = Time.time()
         model.train()
@@ -234,7 +234,7 @@ def train_fold(fold):
             _, genre_predicted_x = genre_diff.p_losses(genre_model, genre_x_start, genre_h, n_g, loss_type='l2')
             loss1, predicted_x = diff.p_losses(model, x_start, h, n, genres_embd=genre_predicted_x, loss_type='l2')
             predicted_items = model.decoder(predicted_x)
-            focal_loss = FocalLoss(alpha=0.15, gamma=7)
+            focal_loss = FocalLoss(alpha=0.13, gamma=6.5)
             loss2 = focal_loss(predicted_items, target_batch)
             loss = loss2
             loss.backward()
