@@ -9,7 +9,7 @@ from utility import extract_axis_1, calculate_hit
 ##############################################################################
 #                  LOAD GENRES MODEL                   #
 ##############################################################################
-def load_genres_predictor(tenc, tenc_path='models/genre_tenc_fold6.pth', diff_path='models/genre_diff_fold6.pth'):
+def load_genres_predictor(tenc, tenc_path='models/genre_tenc_fold3.pth', diff_path='models/genre_diff_fold3.pth'):
     tenc.load_state_dict(torch.load(tenc_path))
     diff = torch.load(diff_path)
     return tenc, diff
