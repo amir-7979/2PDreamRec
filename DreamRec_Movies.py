@@ -37,14 +37,14 @@ def parse_args():
     parser.add_argument('--beta_end', type=float, default=0.02, help='Beta end of diffusion.')
     parser.add_argument('--beta_start', type=float, default=0.0001, help='Beta start of diffusion.')
     parser.add_argument('--lr', type=float, default=0.01, help='Learning rate.')
-    parser.add_argument('--l2_decay', type=float, default=0.01, help='L2 loss regularization coefficient.')
+    parser.add_argument('--l2_decay', type=float, default=0.45, help='L2 loss regularization coefficient.')
     parser.add_argument('--cuda', type=int, default=0, help='CUDA device id.')
-    parser.add_argument('--dropout_rate', type=float, default=0.01, help='Dropout rate.')
+    parser.add_argument('--dropout_rate', type=float, default=0.45, help='Dropout rate.')
     parser.add_argument('--w', type=float, default=2.0, help='Weight used in x_start update inside sampler.')
     parser.add_argument('--p', type=float, default=0.1, help='Probability used in cacu_h for random dropout.')
     parser.add_argument('--report_epoch', type=bool, default=True, help='Whether to report metrics each epoch.')
     parser.add_argument('--diffuser_type', type=str, default='mlp1', help='Type of diffuser network: [mlp1, mlp2].')
-    parser.add_argument('--optimizer', type=str, default='adam', help='Optimizer type: [adam, adamw, adagrad, rmsprop].')
+    parser.add_argument('--optimizer', type=str, default='adamw', help='Optimizer type: [adam, adamw, adagrad, rmsprop].')
     parser.add_argument('--beta_sche', nargs='?', default='linear', help='Beta schedule: [linear, exp, cosine, sqrt].')
     parser.add_argument('--descri', type=str, default='', help='Description of the run.')
     return parser.parse_args()
@@ -211,7 +211,7 @@ def train_fold(fold):
     elif args.optimizer == 'rmsprop':
         optimizer = optim.RMSprop(model.parameters(), lr=args.lr, eps=1e-3, weight_decay=args.l2_decay)
     else:
-        optimizer = optim.Adam(model.parameters(), lr=args.lr, eps=1e-5, weight_decay=args.l2_decay)
+        optimizer = optim.Adam(model.parameters(), lr=args.lr, eps=1e-3, weight_decay=args.l2_decay)
 
     scheduler = lr_scheduler.StepLR(optimizer, step_size=10, gamma=1)
     for epoch in range(args.epoch):
@@ -272,7 +272,7 @@ def main():
         # Set initial default values (these will be updated by tuning)
         args.lr = 0.001
         args.optimizer = "adamw"
-        args.timesteps = 400
+        args.timesteps = 100
 
         # Candidate lists for sequential tuning.
         lr_candidates = [0.1, 0.01, 0.001, 0.0001, 0.00001]
