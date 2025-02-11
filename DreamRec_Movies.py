@@ -348,7 +348,7 @@ def main():
         # --------------------- Full 10-Fold CV Mode ---------------------
         args.lr = 0.001
         args.optimizer = "adamw"
-        args.timesteps = 400
+        args.timesteps = 100
         fold_metrics_list = []
         for fold in range(1, NUM_FOLDS + 1):
             fm = train_fold(fold)
