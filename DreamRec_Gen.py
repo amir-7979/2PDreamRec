@@ -166,7 +166,7 @@ def train_fold(fold):
         optimizer = optim.RMSprop(model.parameters(), lr=args.lr, eps=1e-6, weight_decay=args.l2_decay)
     else:
         optimizer = optim.Adam(model.parameters(), lr=args.lr, eps=1e-6, weight_decay=args.l2_decay)
-    scheduler = lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.7)
+    scheduler = lr_scheduler.StepLR(optimizer, step_size=10, gamma=1)
     epoch_train_losses = []
     for epoch in range(args.epoch):
         start_time = Time.time()
@@ -199,7 +199,6 @@ def train_fold(fold):
                 train_eval_met = evaluate(model, diff, train_csv, device)
                 val_met = evaluate(model, diff, val_csv, device)
                 test_met = evaluate(model, diff, test_csv, device)
-            fold_metrics.add_train_loss(epoch + 1, train_eval_met['loss'])
             fold_metrics.add_val_metrics(epoch + 1, val_met)
             fold_metrics.add_test_metrics(epoch + 1, test_met)
             scheduler.step()
@@ -219,8 +218,8 @@ def main():
 
         # Set initial default values (these will be updated by tuning)
         args.lr = 0.001
-        args.optimizer = "adamw"
-        args.timesteps = 400
+        args.optimizer = "adagrad"
+        args.timesteps = 100
 
         # Candidate lists for sequential tuning.
         lr_candidates = [0.1, 0.01, 0.001, 0.0001]
@@ -295,8 +294,8 @@ def main():
     else:
         # --------------------- Full 10-Fold CV Mode ---------------------
         args.lr = 0.001
-        args.optimizer = "adamw"
-        args.timesteps = 400
+        args.optimizer = "adagrad"
+        args.timesteps = 100
         fold_metrics_list = []
         for fold in range(1, NUM_FOLDS + 1):
             fm = train_fold(fold)
