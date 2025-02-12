@@ -177,34 +177,37 @@ if __name__ == "__main__":
 
     # Outer KFold splitting for nested cross-validation
     # Outer KFold splitting for nested cross-validation
+    # Outer KFold splitting for nested cross-validation
     kf_outer = KFold(n_splits=N_FOLDS, shuffle=True, random_state=42)
     fold_no = 1
 
     for outer_train_index, outer_test_index in kf_outer.split(movie_interactions):
         print(f"Processing Outer Fold {fold_no}")
-        # Outer test data remains the same.
+
+        # Outer test data remains unchanged (completely unseen during training/validation)
         movies_test = [movie_interactions[i] for i in outer_test_index]
         movie_targets_test = [movie_targets[i] for i in outer_test_index]
         genres_test = [genre_interactions[i] for i in outer_test_index]
         genre_targets_test = [genre_targets[i] for i in outer_test_index]
 
-        # Split outer training data to obtain a completely separate validation set.
-        # Here, inner_train_index and inner_val_index will be disjoint.
+        # Split the outer training indices into two disjoint sets:
+        # - inner_train_index: used exclusively for training
+        # - inner_val_index: used exclusively for validation
         inner_train_index, inner_val_index = train_test_split(outer_train_index, test_size=0.1, random_state=42)
 
-        # Training set (use only inner_train_index)
+        # Training set: use only the inner_train_index
         movies_train = [movie_interactions[i] for i in inner_train_index]
         movie_targets_train = [movie_targets[i] for i in inner_train_index]
         genres_train = [genre_interactions[i] for i in inner_train_index]
         genre_targets_train = [genre_targets[i] for i in inner_train_index]
 
-        # Validation set (use only inner_val_index)
+        # Validation set: use only the inner_val_index (these examples are not seen during training)
         movies_val = [movie_interactions[i] for i in inner_val_index]
         movie_targets_val = [movie_targets[i] for i in inner_val_index]
         genres_val = [genre_interactions[i] for i in inner_val_index]
         genre_targets_val = [genre_targets[i] for i in inner_val_index]
 
-        # Save merged nested fold data (for each fold and each split)
+        # Save merged nested fold data for each split:
         save_nested_fold_merged_data(movies_train, movie_targets_train, genres_train, genre_targets_train, fold_no,
                                      "train")
         save_nested_fold_merged_data(movies_val, movie_targets_val, genres_val, genre_targets_val, fold_no, "val")
