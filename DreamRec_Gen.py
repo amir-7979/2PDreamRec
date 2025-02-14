@@ -122,20 +122,18 @@ def evaluate(model, diff, dataset_split, device):
 
 
 ############################################
-# Training Function for One Fold
+# Training Function for One Fold (No Validation)
 ############################################
 
 def train_fold(fold):
     print(f"\n========== Fold {fold} ==========")
     fold_metrics = FoldMetrics(fold)
+    # Removed validation data; only train and test are used.
     train_csv = f"train_fold{fold}.df"
-    val_csv = f"val_fold{fold}.df"
     test_csv = f"test_fold{fold}.df"
     train_df = pd.read_csv(os.path.join(MERGED_DATA_DIR, train_csv))
-    val_df = pd.read_csv(os.path.join(MERGED_DATA_DIR, val_csv))
     test_df = pd.read_csv(os.path.join(MERGED_DATA_DIR, test_csv))
     train_dataset = GenreDataset(train_df)
-    val_dataset = GenreDataset(val_df)
     test_dataset = GenreDataset(test_df)
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
     statics_path = os.path.join(MERGED_DATA_DIR, "statics.csv")
@@ -192,14 +190,14 @@ def train_fold(fold):
         if args.report_epoch:
             print(
                 f"Fold {fold} Epoch {epoch + 1:03d}; Train loss: {avg_epoch_loss:.4f}; Time: {Time.strftime('%H:%M:%S', Time.gmtime(Time.time() - start_time))}")
+        # Evaluate on test data every 10 epochs
         if (epoch + 1) % 10 == 0:
             model.eval()
             with torch.no_grad():
                 print(f"Fold {fold}: Evaluation at Epoch {epoch + 1}")
+                # Optionally, you can evaluate on train data as well if desired:
                 train_eval_met = evaluate(model, diff, train_csv, device)
-                val_met = evaluate(model, diff, val_csv, device)
                 test_met = evaluate(model, diff, test_csv, device)
-            fold_metrics.add_val_metrics(epoch + 1, val_met)
             fold_metrics.add_test_metrics(epoch + 1, test_met)
             scheduler.step()
     os.makedirs("./category", exist_ok=True)
@@ -218,7 +216,7 @@ def main():
 
         # Set initial default values (these will be updated by tuning)
         args.lr = 0.001
-        args.optimizer = "adagrad"
+        args.optimizer = "adamw"
         args.timesteps = 100
 
         # Candidate lists for sequential tuning.
@@ -226,7 +224,7 @@ def main():
         optimizer_candidates = ['adam', 'adamw', 'adagrad', 'rmsprop']
         timesteps_candidates = [i * 100 for i in range(1, 6)]
 
-        # Create TuningRecorder objects with candidate lists and save_dir "item".
+        # Create TuningRecorder objects with candidate lists and save_dir "category".
         tuning_lr_recorder = TuningRecorder("lr", lr_candidates, save_dir="category")
         tuning_optimizer_recorder = TuningRecorder("optimizer", optimizer_candidates, save_dir="category")
         tuning_timesteps_recorder = TuningRecorder("timesteps", timesteps_candidates, save_dir="category")
@@ -294,7 +292,7 @@ def main():
     else:
         # --------------------- Full 10-Fold CV Mode ---------------------
         args.lr = 0.001
-        args.optimizer = "adagrad"
+        args.optimizer = "adamw"
         args.timesteps = 100
         fold_metrics_list = []
         for fold in range(1, NUM_FOLDS + 1):
@@ -318,11 +316,11 @@ def main():
         loss_recorder = LossRecorder(save_dir="category")
         for fm in fold_metrics_list:
             sorted_train = [loss for (ep, loss) in sorted(fm.train_losses, key=lambda x: x[0])]
-            sorted_val = [fm.val_metrics[ep]['loss'] for ep in sorted(fm.val_metrics.keys())]
             sorted_test = [fm.test_metrics[ep]['loss'] for ep in sorted(fm.test_metrics.keys())]
-            loss_recorder.add_fold(fm.fold_number, sorted_train, sorted_val, sorted_test)
+            loss_recorder.add_fold(fm.fold_number, sorted_train, sorted_test)
+
         loss_recorder.save_to_file("category/loss_data.json")
-        avg_train, avg_val, avg_test = loss_recorder.compute_average_losses()
+        avg_train, avg_test = loss_recorder.compute_average_losses()  # updated for only train & test
         epochs_train = sorted(avg_train.keys())
         np.savetxt("category/avg_train_loss.txt", np.array([avg_train[e] for e in epochs_train]))
         print("Average training losses saved to category/avg_train_loss.txt")

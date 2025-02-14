@@ -7,7 +7,8 @@ from collections import deque
 import torch.nn as nn
 import torch
 import torch.nn.functional as F
-
+import numpy as np
+from sklearn.metrics import top_k_accuracy_score, ndcg_score
 
 # import tensorflow as tf
 

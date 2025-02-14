@@ -7,33 +7,27 @@ import matplotlib.pyplot as plt
 class FoldMetrics:
     """
     Records metrics for one fold.
-    Stores a list of (epoch, train_loss) tuples,
-    plus dictionaries for validation and test metrics.
+    Stores a list of (epoch, train_loss) tuples and a dictionary for test metrics.
     """
     def __init__(self, fold_number):
         self.fold_number = fold_number
         self.train_losses = []  # list of tuples: (epoch, loss)
-        self.val_metrics = {}   # dict: epoch -> metrics dict
         self.test_metrics = {}  # dict: epoch -> metrics dict
 
     def add_train_loss(self, epoch, loss):
         self.train_losses.append((epoch, loss))
-
-    def add_val_metrics(self, epoch, metrics):
-        self.val_metrics[epoch] = metrics
 
     def add_test_metrics(self, epoch, metrics):
         self.test_metrics[epoch] = metrics
 
     def __str__(self):
         s = f"Fold {self.fold_number} Metrics:\n"
-        s += "Epoch\tTrainLoss\tValLoss\tTestLoss\tHR@5\tNDCG@5\tHR@10\tNDCG@10\n"
-        for epoch in sorted(self.val_metrics.keys()):
+        s += "Epoch\tTrainLoss\tTestLoss\tHR@5\tNDCG@5\tHR@10\tNDCG@10\n"
+        for epoch in sorted(self.test_metrics.keys()):
             train_loss = next((tl for ep, tl in self.train_losses if ep == epoch), None)
-            val = self.val_metrics[epoch]
             test = self.test_metrics.get(epoch, None)
             test_loss = test['loss'] if test is not None else float('nan')
-            s += (f"{epoch}\t{train_loss:.4f}\t{val['loss']:.4f}\t{test_loss:.4f}\t"
+            s += (f"{epoch}\t{train_loss:.4f}\t{test_loss:.4f}\t"
                   f"{test['HR5']:.4f}\t{test['NDCG5']:.4f}\t{test['HR10']:.4f}\t{test['NDCG10']:.4f}\n")
         return s
 
@@ -43,7 +37,6 @@ class AverageMetrics:
     """
     def __init__(self):
         self.avg_train_loss = {}
-        self.avg_val_metrics = {}
         self.avg_test_metrics = {}
         self.num_folds = 0
 
@@ -51,8 +44,6 @@ class AverageMetrics:
         self.num_folds += 1
         for epoch, loss in fold_metric.train_losses:
             self.avg_train_loss.setdefault(epoch, []).append(loss)
-        for epoch, metrics in fold_metric.val_metrics.items():
-            self.avg_val_metrics.setdefault(epoch, []).append(metrics)
         for epoch, metrics in fold_metric.test_metrics.items():
             self.avg_test_metrics.setdefault(epoch, []).append(metrics)
 
@@ -65,57 +56,49 @@ class AverageMetrics:
                 avg_d[key] = np.mean([m[key] for m in metrics_list])
             return avg_d
 
-        self.avg_val_metrics = {epoch: avg_dict(metrics_list) for epoch, metrics_list in self.avg_val_metrics.items()}
         self.avg_test_metrics = {epoch: avg_dict(metrics_list) for epoch, metrics_list in self.avg_test_metrics.items()}
 
     def __str__(self):
         s = "Average Metrics Across Folds:\n"
-        s += "Epoch\tAvgTrainLoss\tAvgValLoss\tAvgTestLoss\tAvgHR@5\tAvgNDCG@5\tAvgHR@10\tAvgNDCG@10\n"
-        for epoch in sorted(self.avg_val_metrics.keys()):
+        s += "Epoch\tAvgTrainLoss\tAvgTestLoss\tAvgHR@5\tAvgNDCG@5\tAvgHR@10\tAvgNDCG@10\n"
+        for epoch in sorted(self.avg_test_metrics.keys()):
             train_loss = self.avg_train_loss.get(epoch, None)
-            val = self.avg_val_metrics[epoch]
             test = self.avg_test_metrics.get(epoch, None)
             test_loss = test['loss'] if test is not None else float('nan')
-            s += (f"{epoch}\t{train_loss:.4f}\t{val['loss']:.4f}\t{test_loss:.4f}\t"
+            s += (f"{epoch}\t{train_loss:.4f}\t{test_loss:.4f}\t"
                   f"{test['HR5']:.4f}\t{test['NDCG5']:.4f}\t{test['HR10']:.4f}\t{test['NDCG10']:.4f}\n")
         return s
 
 class LossRecorder:
     """
-    Records per-epoch losses for training, validation, and test over folds.
+    Records per-epoch losses for training and test over folds.
     Can save to and load from a JSON file and plot the average curves.
     """
     def __init__(self, save_dir=None):
         self.fold_losses = {}  # key: fold number
         self.save_dir = save_dir if save_dir is not None else "."
 
-    def add_fold(self, fold, train_losses, val_losses, test_losses):
+    def add_fold(self, fold, train_losses, test_losses):
         self.fold_losses[fold] = {
             'train': train_losses,
-            'val': val_losses,
             'test': test_losses
         }
 
     def compute_average_losses(self):
         all_train = defaultdict(list)
         for data in self.fold_losses.values():
-            for epoch, loss in enumerate(data['train'], start=1):
+            for epoch, loss in enumerate(data.get('train', []), start=1):
                 all_train[epoch].append(loss)
         avg_train = {epoch: np.mean(losses) for epoch, losses in all_train.items()}
 
-        all_val = defaultdict(list)
         all_test = defaultdict(list)
         for data in self.fold_losses.values():
-            for i, loss in enumerate(data['val']):
-                epoch = (i+1)*10
-                all_val[epoch].append(loss)
-            for i, loss in enumerate(data['test']):
-                epoch = (i+1)*10
+            for i, loss in enumerate(data.get('test', [])):
+                epoch = (i + 1) * 10
                 all_test[epoch].append(loss)
-        avg_val = {epoch: np.mean(losses) for epoch, losses in all_val.items()}
         avg_test = {epoch: np.mean(losses) for epoch, losses in all_test.items()}
 
-        return avg_train, avg_val, avg_test
+        return avg_train, avg_test
 
     def save_to_file(self, filename=None):
         if filename is None:
@@ -134,15 +117,13 @@ class LossRecorder:
         return lr_obj
 
     def plot_losses(self):
-        avg_train, avg_val, avg_test = self.compute_average_losses()
+        avg_train, avg_test = self.compute_average_losses()
         epochs_train = sorted(avg_train.keys())
-        epochs_eval = sorted(avg_val.keys())
+        epochs_test = sorted(avg_test.keys())
         plt.figure(figsize=(10, 6))
         plt.plot(epochs_train, [avg_train[e] for e in epochs_train],
                  color='blue', linestyle='-', label='Train Loss')
-        plt.plot(epochs_eval, [avg_val[e] for e in epochs_eval],
-                 color='green', linestyle='-', label='Validation Loss')
-        plt.plot(epochs_eval, [avg_test[e] for e in epochs_eval],
+        plt.plot(epochs_test, [avg_test[e] for e in epochs_test],
                  color='red', linestyle='-', label='Test Loss')
         plt.xlabel("Epoch")
         plt.ylabel("Loss")
@@ -198,12 +179,6 @@ class MetricsRecorder:
         plt.legend()
         plt.grid(True)
         plt.show()
-
-import os
-import json
-import numpy as np
-from collections import defaultdict
-import matplotlib.pyplot as plt
 
 class TuningRecorder:
     """
@@ -279,4 +254,3 @@ class TuningRecorder:
                 best = avg_final
                 best_candidate = candidate
         return best_candidate
-

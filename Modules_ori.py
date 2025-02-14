@@ -6,12 +6,10 @@ import math
 from utility import extract_axis_1, calculate_hit
 
 
-##############################################################################
-#                  LOAD GENRES MODEL                   #
-##############################################################################
 def load_genres_predictor(tenc, tenc_path='models/genre_tenc_fold3.pth', diff_path='models/genre_diff_fold3.pth'):
-    tenc.load_state_dict(torch.load(tenc_path))
-    diff = torch.load(diff_path)
+    state_dict = torch.load(tenc_path, map_location='cpu', weights_only=True)
+    tenc.load_state_dict(state_dict, strict=False)
+    diff = torch.load(diff_path, map_location='cpu', weights_only=True)
     return tenc, diff
 
 
@@ -362,9 +360,31 @@ class Tenc(nn.Module):
         return scores
 
 
-class MovieTenc(Tenc):
-    """MovieTenc uses additional 'genres_embd' in the forward pass."""
+# ------------------------
 
+
+def get_top_genres(genre_model, diff, genre_seq, len_seq, device, top_k=12):
+    scores = genre_model.predict(genre_seq, len_seq, diff)  # shape: [batch_size, num_genres]
+    scores = torch.softmax(scores, dim=-1)
+    top_genres = torch.topk(scores, top_k, dim=1).indices  # shape: [batch_size, top_k]
+    return top_genres
+
+
+def filter_movie_scores(movie_scores, top_genres, movie_genre_mapping, target_batch):
+    batch_size, num_movies = movie_scores.size()
+    movie_genre_mapping_exp = movie_genre_mapping.unsqueeze(0).expand(batch_size, -1)
+    top_genres_exp = top_genres.unsqueeze(1)
+    movie_genre_exp = movie_genre_mapping_exp.unsqueeze(2)
+    mask = (movie_genre_exp == top_genres_exp).any(dim=2)
+    # Assume `target_batch` is [batch_size] with indices for the true movie.
+    batch_indices = torch.arange(movie_scores.size(0), device=movie_scores.device)
+    mask[batch_indices, target_batch] = True
+    filtered_scores = movie_scores.masked_fill(~mask, -1e9)
+
+    return filtered_scores
+
+
+class MovieTenc(Tenc):
     def __init__(self, hidden_size, item_num, state_size, dropout, diffuser_type, device, num_heads=1):
         super(Tenc, self).__init__()
         self.state_size = state_size
@@ -373,75 +393,117 @@ class MovieTenc(Tenc):
         self.dropout = nn.Dropout(dropout)
         self.diffuser_type = diffuser_type
         self.device = device
-        self.item_embeddings = nn.Embedding(num_embeddings=item_num + 1, embedding_dim=hidden_size)
+        self.item_embeddings = nn.Embedding(
+            num_embeddings=item_num + 1,
+            embedding_dim=hidden_size,
+        )
         nn.init.normal_(self.item_embeddings.weight, 0, 1)
-        self.none_embedding = nn.Embedding(num_embeddings=1, embedding_dim=hidden_size)
+        self.none_embedding = nn.Embedding(
+            num_embeddings=1,
+            embedding_dim=self.hidden_size,
+        )
         nn.init.normal_(self.none_embedding.weight, 0, 1)
-        self.positional_embeddings = nn.Embedding(num_embeddings=state_size, embedding_dim=hidden_size)
+        self.positional_embeddings = nn.Embedding(
+            num_embeddings=state_size,
+            embedding_dim=hidden_size
+        )
+        # emb_dropout is added
         self.emb_dropout = nn.Dropout(dropout)
         self.ln_1 = nn.LayerNorm(hidden_size)
         self.ln_2 = nn.LayerNorm(hidden_size)
         self.ln_3 = nn.LayerNorm(hidden_size)
         self.mh_attn = MultiHeadAttention(hidden_size, hidden_size, num_heads, dropout)
         self.feed_forward = PositionwiseFeedForward(hidden_size, hidden_size, dropout)
-        self.embedding_dropout = nn.Dropout(dropout)
+        self.s_fc = nn.Linear(hidden_size, item_num)
+        # self.ac_func = nn.ReLU()
+
+        # self.step_embeddings = nn.Embedding(
+        #     num_embeddings=50,
+        #     embedding_dim=hidden_size
+        # )
+
         self.step_mlp = nn.Sequential(
-            SinusoidalPositionEmbeddings(hidden_size),
-            nn.Linear(hidden_size, hidden_size * 2),
+            SinusoidalPositionEmbeddings(self.hidden_size),
+            nn.Linear(self.hidden_size, self.hidden_size * 2),
             nn.GELU(),
-            nn.Linear(hidden_size * 2, hidden_size),
+            nn.Linear(self.hidden_size * 2, self.hidden_size),
         )
+
         self.emb_mlp = nn.Sequential(
             nn.SiLU(),
-            nn.Linear(hidden_size, hidden_size * 2)
+            nn.Linear(self.hidden_size, self.hidden_size * 2)
         )
-        if diffuser_type == 'mlp1':
+
+        self.diff_mlp = nn.Sequential(
+            nn.Linear(self.hidden_size * 4, self.hidden_size * 2),
+            nn.GELU(),
+            nn.Linear(self.hidden_size * 2, self.hidden_size),
+        )
+
+        if self.diffuser_type == 'mlp1':
             self.diffuser = nn.Sequential(
-                nn.Linear(hidden_size * 4, hidden_size)
+                nn.Linear(self.hidden_size * 4, self.hidden_size)
             )
+
             self.decoder = nn.Sequential(
-                nn.Linear(hidden_size, hidden_size * 4),
+                nn.Linear(self.hidden_size, self.hidden_size * 4),
                 nn.ReLU(),
-                nn.Linear(hidden_size * 4, hidden_size),
+                nn.Linear(self.hidden_size * 4, self.hidden_size),
                 nn.ReLU(),
-                nn.Linear(hidden_size, item_num),
+                nn.Linear(self.hidden_size, self.item_num),
+                # nn.Softmax(dim=-1),
             )
-        elif diffuser_type == 'mlp2':
+
+        elif self.diffuser_type == 'mlp2':
             self.diffuser = nn.Sequential(
-                nn.Linear(hidden_size * 4, hidden_size * 2),
+                nn.Linear(self.hidden_size * 4, self.hidden_size * 2),
                 nn.GELU(),
-                nn.Linear(hidden_size * 2, hidden_size)
+                nn.Linear(self.hidden_size * 2, self.hidden_size)
             )
             self.decoder = nn.Sequential(
-                nn.Linear(hidden_size, hidden_size * 2),
+                nn.Linear(self.hidden_size, self.hidden_size * 2),
                 nn.ReLU(),
-                nn.Linear(hidden_size * 2, hidden_size * 4),
+                nn.Linear(self.hidden_size * 2, self.hidden_size * 4),
                 nn.ReLU(),
-                nn.Linear(hidden_size * 4, hidden_size * 2),
+                nn.Linear(self.hidden_size * 4, self.hidden_size * 2),
                 nn.ReLU(),
-                nn.Linear(hidden_size * 2, hidden_size),
+                nn.Linear(self.hidden_size * 2, self.hidden_size),
                 nn.ReLU(),
-                nn.Linear(hidden_size, item_num),
+                nn.Linear(self.hidden_size, self.item_num),
+                # nn.Softmax(dim=-1),
             )
 
     def cacu_x(self, x):
-        return self.item_embeddings(x)
+        x = self.item_embeddings(x)
+        return x
 
     def forward(self, x, h, step, genres_embd):
+
         t = self.step_mlp(step)
-        cat_in = torch.cat((x, h, t, genres_embd), dim=1)
-        return self.diffuser(cat_in)
+
+        if self.diffuser_type == 'mlp1':
+            res = self.diffuser(torch.cat((x, h, t, genres_embd), dim=1))
+        elif self.diffuser_type == 'mlp2':
+            res = self.diffuser(torch.cat((x, h, t, genres_embd), dim=1))
+        return res
 
     def forward_uncon(self, x, step, genres_embd):
-        h = self.none_embedding(torch.tensor([0], device=self.device))
-        h = h.repeat(x.shape[0], 1)
+        h = self.none_embedding(torch.tensor([0]).to(self.device))
+        h = torch.cat([h.view(1, 64)] * x.shape[0], dim=0)
+
         t = self.step_mlp(step)
-        cat_in = torch.cat((x, h, t, genres_embd), dim=1)
-        return self.diffuser(cat_in)
+
+        if self.diffuser_type == 'mlp1':
+            res = self.diffuser(torch.cat((x, h, t, genres_embd), dim=1))
+        elif self.diffuser_type == 'mlp2':
+            res = self.diffuser(torch.cat((x, h, t, genres_embd), dim=1))
+
+        return res
 
     def predict(self, states, len_states, diff, genres_embd):
+        # hidden
         inputs_emb = self.item_embeddings(states)
-        inputs_emb += self.positional_embeddings(torch.arange(self.state_size, device=self.device))
+        inputs_emb += self.positional_embeddings(torch.arange(self.state_size).to(self.device))
         seq = self.emb_dropout(inputs_emb)
         mask = torch.ne(states, self.item_num).float().unsqueeze(-1).to(self.device)
         seq *= mask
@@ -452,9 +514,16 @@ class MovieTenc(Tenc):
         ff_out = self.ln_3(ff_out)
         state_hidden = extract_axis_1(ff_out, len_states - 1)
         h = state_hidden.squeeze()
+
         x = diff.sample(self.forward, self.forward_uncon, h, genres_embd)
-        scores = F.softmax(self.decoder(x), dim=-1)
-        return scores
+        # scores = F.softmax(self.decoder(x), dim=-1)
+
+        # test_item_emb = self.item_embeddings.weight
+        # # scores = torch.matmul(x, test_item_emb.transpose(0, 1))
+        # scores = torch.matmul(x / x.norm(dim=-1, keepdim=True),
+        #               (test_item_emb / test_item_emb.norm(dim=-1, keepdim=True)).transpose(0, 1))
+
+        return self.decoder(x)
 
 
 class PositionwiseFeedForward(nn.Module):
@@ -545,3 +614,6 @@ class MultiHeadAttention(nn.Module):
 
         return output_res
 
+
+# Add diffusion to the list of safe globals so that safe loading accepts it.
+torch.serialization.add_safe_globals([diffusion])
