@@ -15,6 +15,9 @@ import logging
 from Modules_ori import MovieDiffusion, Tenc, MovieTenc, load_genres_predictor, diffusion, Tenc
 from utility import extract_axis_1, calculate_hit
 from recorders import LossRecorder, MetricsRecorder, TuningRecorder, FoldMetrics, AverageMetrics
+from adabelief_pytorch import AdaBelief
+from torch_optimizer import Lamb
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 logging.getLogger().setLevel(logging.INFO)
 MERGED_DATA_DIR = "data"
@@ -55,9 +58,9 @@ def parse_args():
     parser.add_argument('--beta_end', type=float, default=0.02, help='Beta end of diffusion.')
     parser.add_argument('--beta_start', type=float, default=0.0001, help='Beta start of diffusion.')
     parser.add_argument('--lr', type=float, default=0.001, help='Learning rate.')
-    parser.add_argument('--l2_decay', type=float, default=0, help='L2 loss regularization coefficient.')
+    parser.add_argument('--l2_decay', type=float, default=1e-5, help='L2 loss regularization coefficient.')
     parser.add_argument('--cuda', type=int, default=0, help='CUDA device id.')
-    parser.add_argument('--dropout_rate', type=float, default=0, help='Dropout rate.')
+    parser.add_argument('--dropout_rate', type=float, default=1e-5, help='Dropout rate.')
     parser.add_argument('--w', type=float, default=2.0, help='Weight used in x_start update inside sampler.')
     parser.add_argument('--p', type=float, default=0.1, help='Probability used in cacu_h for random dropout.')
     parser.add_argument('--report_epoch', type=bool, default=True, help='Whether to report metrics each epoch.')
@@ -97,8 +100,7 @@ def evaluate(model, diff, dataset_split, device):
     ndcg_purchase = np.zeros(len(topk))
     losses = []
     genre_seq = eval_data['genre_seq'].apply(lambda x: list(map(int, eval(x)))).tolist()
-    genre_len = (eval_data['genre_len'].values if 'genre_len' in eval_data.columns
-                 else np.array([len(eval(x)) for x in eval_data['genre_seq'].tolist()]))
+    genre_len = (eval_data['genre_len'].values if 'genre_len' in eval_data.columns else np.array([len(eval(x)) for x in eval_data['genre_seq'].tolist()]))
     genre_target = eval_data['genre_target'].values
     for i in range(0, len(genre_seq), batch_size):
         seq_batch = torch.LongTensor(genre_seq[i:i + batch_size]).to(device)
@@ -117,6 +119,12 @@ def evaluate(model, diff, dataset_split, device):
     avg_loss = np.mean(losses)
     hr_list = hit_purchase / total_samples
     ndcg_list = ndcg_purchase / total_samples
+    print('{:<10s} {:<10s} {:<10s} {:<10s}'.format(
+        'HR@' + str(topk[0]), 'NDCG@' + str(topk[0]),
+        'HR@' + str(topk[1]), 'NDCG@' + str(topk[1])))
+    print('{:<10.6f} {:<10.6f} {:<10.6f} {:<10.6f}'.format(
+        hr_list[0], ndcg_list[0], hr_list[1], ndcg_list[1]))
+    print(f'Loss: {avg_loss:.4f}')
     return {'loss': avg_loss, 'HR5': hr_list[0], 'NDCG5': ndcg_list[0],
             'HR10': hr_list[1], 'NDCG10': ndcg_list[1]}
 
@@ -154,17 +162,19 @@ def train_fold(fold):
     model = Tenc(args.hidden_factor, genre_vocab_size, seq_size, args.dropout_rate, args.diffuser_type, device)
     diff = diffusion(args.timesteps, args.beta_start, args.beta_end, args.w)
     model.to(device)
-    if args.optimizer == 'adam':
-        optimizer = optim.Adam(model.parameters(), lr=args.lr, eps=1e-8, weight_decay=args.l2_decay)
+    if args.optimizer == 'nadam':
+        optimizer = optim.NAdam(model.parameters(), lr=args.lr, eps=2e-5, weight_decay=args.l2_decay)
     elif args.optimizer == 'adamw':
-        optimizer = optim.AdamW(model.parameters(), lr=args.lr, eps=1e-8, weight_decay=args.l2_decay)
-    elif args.optimizer == 'adagrad':
-        optimizer = optim.Adagrad(model.parameters(), lr=args.lr, eps=1e-8, weight_decay=args.l2_decay)
-    elif args.optimizer == 'rmsprop':
-        optimizer = optim.RMSprop(model.parameters(), lr=args.lr, eps=1e-8, weight_decay=args.l2_decay)
+        optimizer = optim.AdamW(model.parameters(), lr=args.lr, eps=2e-5, weight_decay=args.l2_decay)
+    elif args.optimizer == 'adabelief':
+        optimizer = AdaBelief(model.parameters(), lr=args.lr, eps=2e-5, weight_decay=args.l2_decay)
+    elif args.optimizer == 'lamb':
+        optimizer = Lamb(model.parameters(), lr=args.lr, eps=2e-5, weight_decay=args.l2_decay)
     else:
-        optimizer = optim.Adam(model.parameters(), lr=args.lr, eps=1e-8, weight_decay=args.l2_decay)
-    scheduler = lr_scheduler.StepLR(optimizer, step_size=10, gamma=1)
+        optimizer = optim.AdamW(model.parameters(), lr=args.lr, eps=2e-5, weight_decay=args.l2_decay)
+
+    scheduler = lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.5)
+
     epoch_train_losses = []
     for epoch in range(args.epoch):
         start_time = Time.time()
@@ -196,7 +206,6 @@ def train_fold(fold):
             with torch.no_grad():
                 print(f"Fold {fold}: Evaluation at Epoch {epoch + 1}")
                 # Optionally, you can evaluate on train data as well if desired:
-                train_eval_met = evaluate(model, diff, train_csv, device)
                 test_met = evaluate(model, diff, test_csv, device)
             fold_metrics.add_test_metrics(epoch + 1, test_met)
             scheduler.step()
@@ -213,23 +222,15 @@ def main():
     NUM_FOLDS = 10
     if args.tune:
         tuning_fold = 1
-
-        # Set initial default values (these will be updated by tuning)
-        args.lr = 0.001
-        args.optimizer = "adamw"
-        args.timesteps = 100
-
-        # Candidate lists for sequential tuning.
-        lr_candidates = [0.1, 0.01, 0.001, 0.0001]
-        optimizer_candidates = ['adam', 'adamw', 'adagrad', 'rmsprop']
-        timesteps_candidates = [i * 100 for i in range(1, 6)]
-
-        # Create TuningRecorder objects with candidate lists and save_dir "category".
+        args.lr = 0.01
+        args.optimizer = "nadam"
+        args.timesteps = 250
+        lr_candidates = [0.05, 0.01, 0.005, 0.001]
+        optimizer_candidates = ['lamb', 'adamw', 'adabelief', 'nadam']
+        timesteps_candidates = [i * 50 for i in range(1, 6)]
         tuning_lr_recorder = TuningRecorder("lr", lr_candidates, save_dir="category")
         tuning_optimizer_recorder = TuningRecorder("optimizer", optimizer_candidates, save_dir="category")
         tuning_timesteps_recorder = TuningRecorder("timesteps", timesteps_candidates, save_dir="category")
-
-        # --- Tune Learning Rate ---
         for candidate in tqdm(lr_candidates, desc="Tuning lr"):
             args.lr = candidate
             fm = train_fold(tuning_fold)
@@ -240,9 +241,8 @@ def main():
             print(f"[lr candidate {candidate}] Fold {tuning_fold}: HR@10 = {fold_hr10_list}")
         best_lr = tuning_lr_recorder.find_best()
         print("\nBest learning rate found:", best_lr)
-        args.lr = best_lr  # update best learning rate for next stage
+        args.lr = best_lr
 
-        # --- Tune Optimizer (with best learning rate fixed) ---
         for candidate in tqdm(optimizer_candidates, desc="Tuning optimizer"):
             args.optimizer = candidate
             fm = train_fold(tuning_fold)
@@ -253,8 +253,6 @@ def main():
         best_optimizer = tuning_optimizer_recorder.find_best()
         print("\nBest optimizer found:", best_optimizer)
         args.optimizer = best_optimizer
-
-        # --- Tune Timesteps (with best lr and optimizer fixed) ---
         for candidate in tqdm(timesteps_candidates, desc="Tuning timesteps"):
             args.timesteps = candidate
             fm = train_fold(tuning_fold)
@@ -265,8 +263,6 @@ def main():
         best_timesteps = tuning_timesteps_recorder.find_best()
         print("\nBest timesteps found:", best_timesteps)
         args.timesteps = best_timesteps  # update best timesteps
-
-        # --- Save and Plot Tuning Results ---
         os.makedirs("./category", exist_ok=True)
         tuning_lr_recorder.save_to_file("./category/tuning_lr.json")
         tuning_optimizer_recorder.save_to_file("./category/tuning_optimizer.json")
@@ -278,8 +274,6 @@ def main():
             f.write("Detailed fold metrics (tuning mode, fold 1):\n")
             f.write(str(train_fold(tuning_fold)))
         print("Tuning fold metrics saved to ./category/fold_metrics_tune.txt")
-
-        # Save best candidate values to a JSON file.
         best_candidates = {
             "lr": best_lr,
             "optimizer": best_optimizer,
@@ -291,9 +285,9 @@ def main():
 
     else:
         # --------------------- Full 10-Fold CV Mode ---------------------
-        args.lr = 0.001
-        args.optimizer = "adamw"
-        args.timesteps = 100
+        args.lr = 0.01
+        args.optimizer = "nadam"
+        args.timesteps = 250
         fold_metrics_list = []
         for fold in range(1, NUM_FOLDS + 1):
             fm = train_fold(fold)
@@ -320,12 +314,11 @@ def main():
             loss_recorder.add_fold(fm.fold_number, sorted_train, sorted_test)
 
         loss_recorder.save_to_file("category/loss_data.json")
-        avg_train, avg_test = loss_recorder.compute_average_losses()  # updated for only train & test
+        avg_train, avg_test = loss_recorder.compute_average_losses()
         epochs_train = sorted(avg_train.keys())
         np.savetxt("category/avg_train_loss.txt", np.array([avg_train[e] for e in epochs_train]))
         print("Average training losses saved to category/avg_train_loss.txt")
         loss_recorder.plot_losses()
-
         metrics_recorder = MetricsRecorder(save_dir="category")
         for fm in fold_metrics_list:
             metrics_recorder.add_fold(fm)

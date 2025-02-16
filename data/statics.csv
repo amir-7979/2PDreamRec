@@ -1,6 +1,6 @@
 statistic,value
-num_users,5078.0
-num_movies,3047.0
+num_users,6034.0
+num_movies,3883.0
 num_genres,18.0
 train_seq_length,10.0
 raw_seq_length,11.0

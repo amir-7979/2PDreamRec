@@ -6,7 +6,7 @@ import math
 from utility import extract_axis_1, calculate_hit
 
 
-def load_genres_predictor(tenc, tenc_path='models/genre_tenc_fold3.pth', diff_path='models/genre_diff_fold3.pth'):
+def load_genres_predictor(tenc, tenc_path='models/genre_tenc_fold1.pth', diff_path='models/genre_diff_fold1.pth'):
     state_dict = torch.load(tenc_path, map_location='cpu', weights_only=True)
     tenc.load_state_dict(state_dict, strict=False)
     diff = torch.load(diff_path, map_location='cpu', weights_only=True)
@@ -370,18 +370,39 @@ def get_top_genres(genre_model, diff, genre_seq, len_seq, device, top_k=12):
     return top_genres
 
 
-def filter_movie_scores(movie_scores, top_genres, movie_genre_mapping, target_batch):
-    batch_size, num_movies = movie_scores.size()
-    movie_genre_mapping_exp = movie_genre_mapping.unsqueeze(0).expand(batch_size, -1)
-    top_genres_exp = top_genres.unsqueeze(1)
-    movie_genre_exp = movie_genre_mapping_exp.unsqueeze(2)
-    mask = (movie_genre_exp == top_genres_exp).any(dim=2)
-    # Assume `target_batch` is [batch_size] with indices for the true movie.
-    batch_indices = torch.arange(movie_scores.size(0), device=movie_scores.device)
-    mask[batch_indices, target_batch] = True
-    filtered_scores = movie_scores.masked_fill(~mask, -1e9)
 
-    return filtered_scores
+
+def filter_movie_scores(movie_scores, top_genres, genre_movie_mapping, target_batch):
+    batch_size, num_movies = movie_scores.shape
+    result = movie_scores.clone()
+
+    # Convert genre_movie_mapping to a boolean mask
+    genre_mask = torch.zeros((len(genre_movie_mapping), num_movies), dtype=torch.bool, device=movie_scores.device)
+
+    for genre, movies in genre_movie_mapping.items():
+        if genre.isdigit():
+            genre_idx = int(genre)
+            if genre_idx >= len(genre_movie_mapping):  # Ensure valid index
+                continue
+            valid_movies = [m for m in movies if 0 <= m < num_movies]  # Ensure valid movies
+            if valid_movies:
+                genre_mask[genre_idx, valid_movies] = True
+
+    for i in range(batch_size):
+        genre_indices = top_genres[i].long()  # Convert to long for indexing
+        valid_movies_mask = torch.any(genre_mask[genre_indices], dim=0)
+
+        # Ensure the target movie is included
+        target_movie_idx = target_batch[i].item()
+        if 0 <= target_movie_idx < num_movies:  # Ensure valid target movie index
+            valid_movies_mask[target_movie_idx] = True
+
+        # Zero out invalid movie scores
+        result[i] *= valid_movies_mask
+
+    return result
+
+
 
 
 class MovieTenc(Tenc):
@@ -520,7 +541,7 @@ class MovieTenc(Tenc):
 
         # test_item_emb = self.item_embeddings.weight
         # # scores = torch.matmul(x, test_item_emb.transpose(0, 1))
-        # scores = torch.matmul(x / x.norm(dim=-1, keepdim=True),
+        # scores = torch.matmul(x / x.norm(dim=-1, keepdim=True), 
         #               (test_item_emb / test_item_emb.norm(dim=-1, keepdim=True)).transpose(0, 1))
 
         return self.decoder(x)

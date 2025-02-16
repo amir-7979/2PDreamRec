@@ -7,6 +7,7 @@ from tqdm import tqdm
 from sklearn.model_selection import KFold, train_test_split
 import random
 import torch
+import json
 
 # -----------------------------
 # Constants and Directories
@@ -92,6 +93,40 @@ def load_data():
     # merged, _ = reindex_merged_data(merged)
     return merged
 
+
+
+
+
+
+import os
+import pandas as pd
+import json
+
+def build_genre_movie_mapping(movies_path, output_path):
+    movies = pd.read_csv(movies_path, sep="::", engine="python", names=["movieId", "title", "genres"], encoding="ISO-8859-1")
+    genre_movie_mapping = {}
+    genre2id = {}
+    current_genre_id = 0
+    
+    for _, row in movies.iterrows():
+        movie_id = row["movieId"]
+        genres = row["genres"].split("|")
+        for genre in genres:
+            if genre not in genre2id:
+                genre2id[genre] = current_genre_id
+                genre_movie_mapping[current_genre_id] = []
+                current_genre_id += 1
+            genre_id = genre2id[genre]
+            genre_movie_mapping[int(genre_id)].append(movie_id)
+    
+    with open(output_path, "w", encoding="utf-8") as f:
+        json.dump(genre_movie_mapping, f, indent=4)
+
+
+
+
+
+
 def filter_users(data, min_interactions=5, max_interactions=4000, min_high_rating=5):
     user_counts = data['userId'].value_counts()
     valid_users_total = user_counts[(user_counts >= min_interactions) & (user_counts <= max_interactions)].index
@@ -163,33 +198,6 @@ def reindex_filtered_data(df):
     df['movieId'] = df['movieId'].map(new_mapping)
     return df, new_mapping
 
-# -----------------------------
-# Build and Save Movie-to-Genre Mapping
-# -----------------------------
-def build_and_save_movie_to_genre_mapping(movies_path, output_path):
-    movies = pd.read_csv(movies_path, sep="::", engine="python",
-                         names=["movieId", "title", "genres"],
-                         encoding="ISO-8859-1")
-    movies, _ = reindex_movies(movies)
-    genre_to_id = {}
-    current_id = 0
-    movie_to_genre = {}
-    for _, row in movies.iterrows():
-        primary_genre = row["genres"].split("|")[0]
-        if primary_genre not in genre_to_id:
-            genre_to_id[primary_genre] = current_id
-            current_id += 1
-        movie_to_genre[row["movieId"]] = genre_to_id[primary_genre]
-    sorted_movie_ids = sorted(movie_to_genre.keys())
-    mapping_list = [movie_to_genre[movieId] for movieId in sorted_movie_ids]
-    mapping_df = pd.DataFrame({
-        "movieId": sorted_movie_ids,
-        "genreId": mapping_list
-    })
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    mapping_df.to_csv(output_path, index=False)
-    print("Saved movie-to-genre mapping to", output_path)
-    return mapping_df, movie_to_genre, genre_to_id
 
 # -----------------------------
 # Main Nested Splitting Procedure (No Validation)
@@ -210,7 +218,6 @@ if __name__ == "__main__":
     kf_outer = KFold(n_splits=N_FOLDS, shuffle=True, random_state=42)
     fold_no = 1
     for outer_train_index, outer_test_index in kf_outer.split(movie_interactions):
-        print(f"Processing Fold {fold_no}")
         movies_train = [movie_interactions[i] for i in outer_train_index]
         movie_targets_train = [movie_targets[i] for i in outer_train_index]
         genres_train = [genre_interactions[i] for i in outer_train_index]
@@ -221,7 +228,6 @@ if __name__ == "__main__":
         genre_targets_test = [genre_targets[i] for i in outer_test_index]
         save_nested_fold_merged_data(movies_train, movie_targets_train, genres_train, genre_targets_train, fold_no, "train")
         save_nested_fold_merged_data(movies_test, movie_targets_test, genres_test, genre_targets_test, fold_no, "test")
-        print(f"Saved merged fold {fold_no} files.")
         fold_no += 1
     unique_movies = set()
     for seq in movie_interactions:
@@ -250,5 +256,6 @@ if __name__ == "__main__":
     )
     movies_path = os.path.join(EXTRACTED_DIR, "movies.dat")
     mapping_output_path = os.path.join(OUTPUT_DIR, "movie_to_genre_mapping.csv")
-    build_and_save_movie_to_genre_mapping(movies_path, mapping_output_path)
     print("Nested 10-Fold dataset preparation complete!")
+    output_path = os.path.join(OUTPUT_DIR, "genre_movie_mapping.json")
+    build_genre_movie_mapping(movies_path, output_path)

@@ -11,9 +11,12 @@ import torch.optim.lr_scheduler as lr_scheduler
 from torch.utils.data import Dataset, DataLoader
 from collections import defaultdict
 from tqdm import tqdm
+from adabelief_pytorch import AdaBelief
+from torch_optimizer import Lamb
 import random
 import logging
 import json
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 # Import your modules.
 from Modules_ori import MovieTenc, MovieDiffusion, Tenc, diffusion, load_genres_predictor, get_top_genres, filter_movie_scores
@@ -23,6 +26,7 @@ from recorders import LossRecorder, MetricsRecorder, TuningRecorder, FoldMetrics
 logging.getLogger().setLevel(logging.INFO)
 MERGED_DATA_DIR = "data"
 movie_genre_mapping = None
+genre_movie_mapping = None
 
 ############################################
 # Argument Parsing and Setup
@@ -42,9 +46,9 @@ def parse_args():
     parser.add_argument('--beta_end', type=float, default=0.02, help='Beta end of diffusion.')
     parser.add_argument('--beta_start', type=float, default=0.0001, help='Beta start of diffusion.')
     parser.add_argument('--lr', type=float, default=0.01, help='Learning rate.')
-    parser.add_argument('--l2_decay', type=float, default=0.45, help='L2 loss regularization coefficient.')
+    parser.add_argument('--l2_decay', type=float, default=0.4, help='L2 loss regularization coefficient.')
     parser.add_argument('--cuda', type=int, default=0, help='CUDA device id.')
-    parser.add_argument('--dropout_rate', type=float, default=0.45, help='Dropout rate.')
+    parser.add_argument('--dropout_rate', type=float, default=0.4, help='Dropout rate.')
     parser.add_argument('--w', type=float, default=2.0, help='Weight used in x_start update inside sampler.')
     parser.add_argument('--p', type=float, default=0.1, help='Probability used in cacu_h for random dropout.')
     parser.add_argument('--report_epoch', type=bool, default=True, help='Whether to report metrics each epoch.')
@@ -118,7 +122,7 @@ class FocalLoss(nn.Module):
 # Evaluation Function (with Genre Integration)
 ############################################
 
-def evaluate(model, genre_model, genre_diff, split_csv, diff, device, movie_genre_mapping):
+def evaluate(model, genre_model, genre_diff, split_csv, diff, device, movie_genre_mapping, genre_movie_mapping):
     eval_data = pd.read_csv(os.path.join(MERGED_DATA_DIR, split_csv))
     batch_size = args.batch_size
     topk = [5, 10]
@@ -134,7 +138,6 @@ def evaluate(model, genre_model, genre_diff, split_csv, diff, device, movie_genr
     movie_target = eval_data['movie_target'].values
     genre_seq = eval_data['genre_seq'].apply(lambda x: list(map(int, eval(x)))).tolist()
     genre_target = eval_data['genre_target'].values
-    focal_loss_fn = FocalLoss(alpha=0.13, gamma=6.5)
 
     for i in range(0, len(movie_seq), batch_size):
         seq_batch = torch.LongTensor(movie_seq[i:i+batch_size]).to(device)
@@ -151,13 +154,14 @@ def evaluate(model, genre_model, genre_diff, split_csv, diff, device, movie_genr
         _, genre_predicted_x = genre_diff.p_losses(genre_model, genre_x_start, genre_h, n_g, loss_type='l2')
         loss1, predicted_x = diff.p_losses(model, x_start, h, n, genres_embd=genre_predicted_x, loss_type='l2')
         predicted_items = model.decoder(predicted_x)
-        genre_topK = get_top_genres(genre_model, genre_diff, genre_seq_batch, len_seq_batch, device, top_k=10)
-        filtered_scores = filter_movie_scores(predicted_items, genre_topK, movie_genre_mapping, target_batch)
-        focal_loss = FocalLoss(alpha=0.15, gamma=7)
-        loss2 = focal_loss(filtered_scores, target_batch)
+        #predicted_items = model.predict(seq_batch, len_seq_batch, diff, genre_predicted_x)
+        # genre_topK = get_top_genres(genre_model, genre_diff, genre_seq_batch, len_seq_batch, device, top_k=10)
+        # filtered_scores = filter_movie_scores(predicted_items, genre_topK, genre_movie_mapping, target_batch)
+        focal_loss = FocalLoss(alpha=0.1, gamma=10)
+        loss2 = focal_loss(predicted_items, target_batch)
         loss = loss2
         losses.append(loss.item())
-        prediction = torch.softmax(filtered_scores, dim=-1)
+        prediction = torch.softmax(predicted_items, dim=-1)
         _, topK = prediction.topk(10, dim=1, largest=True, sorted=True)
         topK = topK.cpu().detach().numpy()
         calculate_hit(target_batch, topK, topk, hit_purchase, ndcg_purchase)
@@ -181,6 +185,7 @@ def evaluate(model, genre_model, genre_diff, split_csv, diff, device, movie_genr
 
 def train_fold(fold):
     global movie_genre_mapping
+    global genre_movie_mapping
     print(f"\n========== Fold {fold} ==========")
     fold_metrics = FoldMetrics(fold)
     # Use the pre-saved CSV files for this fold.
@@ -200,11 +205,13 @@ def train_fold(fold):
         genre_vocab_size_dynamic = int(statics["num_genres"])
         seq_size = int(statics.get("train_seq_length", 10))
     else:
-        movie_vocab_size_dynamic = 3952
+        movie_vocab_size_dynamic = 3883
         genre_vocab_size_dynamic = 18
         seq_size = 10
     # Use the dynamic movie vocabulary size.
-    model = MovieTenc(args.hidden_factor, movie_vocab_size_dynamic, seq_size, args.dropout_rate, args.diffuser_type, device)
+    # model = MovieTenc(args.hidden_factor, movie_vocab_size_dynamic, seq_size, args.dropout_rate, args.diffuser_type, device)
+    model = MovieTenc(args.hidden_factor, movie_vocab_size_dynamic, seq_size, args.dropout_rate, args.diffuser_type, device=device).to(device)
+
     diff = MovieDiffusion(args.timesteps, args.beta_start, args.beta_end, args.w)
     genre_model = Tenc(args.hidden_factor, genre_vocab_size_dynamic, seq_size, args.dropout_rate, args.diffuser_type, device)
     genre_diff = diffusion(100, args.beta_start, args.beta_end, args.w)
@@ -213,19 +220,20 @@ def train_fold(fold):
         param.requires_grad = False
     model.to(device)
     genre_model.to(device)
-    if args.optimizer == 'adam':
-        optimizer = optim.Adam(model.parameters(), lr=args.lr, eps=1.2e-3, weight_decay=args.l2_decay)
+    if args.optimizer == 'nadam':
+        optimizer = optim.NAdam(model.parameters(), lr=args.lr, eps=2e-5, weight_decay=args.l2_decay)
     elif args.optimizer == 'adamw':
-        optimizer = optim.AdamW(model.parameters(), lr=args.lr, eps=1.2e-3, weight_decay=args.l2_decay)
-    elif args.optimizer == 'adagrad':
-        optimizer = optim.Adagrad(model.parameters(), lr=args.lr, eps=1.2e-3, weight_decay=args.l2_decay)
-    elif args.optimizer == 'rmsprop':
-        optimizer = optim.RMSprop(model.parameters(), lr=args.lr, eps=1.2e-3, weight_decay=args.l2_decay)
+        optimizer = optim.AdamW(model.parameters(), lr=args.lr, eps=2e-5, weight_decay=args.l2_decay)
+    elif args.optimizer == 'adabelief':
+        optimizer = AdaBelief(model.parameters(), lr=args.lr, eps=2e-5, weight_decay=args.l2_decay)
+    elif args.optimizer == 'lamb':
+        optimizer = Lamb(model.parameters(), lr=args.lr, eps=2e-5, weight_decay=args.l2_decay)
     else:
-        optimizer = optim.Adam(model.parameters(), lr=args.lr, eps=1.2e-3, weight_decay=args.l2_decay)
+        optimizer = optim.AdamW(model.parameters(), lr=args.lr, eps=2e-5, weight_decay=args.l2_decay)
 
-    scheduler = lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=10, T_mult=1)
-    focal_loss_fn = FocalLoss(alpha=0.13, gamma=6.5)
+    scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.6, eps=2e-5, patience=10, verbose=True)
+
+    
     for epoch in range(args.epoch):
         start_time = Time.time()
         model.train()
@@ -246,28 +254,33 @@ def train_fold(fold):
             _, genre_predicted_x = genre_diff.p_losses(genre_model, genre_x_start, genre_h, n_g, loss_type='l2')
             loss1, predicted_x = diff.p_losses(model, x_start, h, n, genres_embd=genre_predicted_x, loss_type='l2')
             predicted_items = model.decoder(predicted_x)
-            #--------------
-            genre_topK = get_top_genres(genre_model, genre_diff, genre_seq_batch, len_seq_batch, device, top_k=10)
-            filtered_scores = filter_movie_scores(predicted_items, genre_topK, movie_genre_mapping, target_batch)
 
-            focal_loss = FocalLoss(alpha=0.15, gamma=7)
-            loss2 = focal_loss(filtered_scores, target_batch)
+            #--------------
+            # genre_topK = get_top_genres(genre_model, genre_diff, genre_seq_batch, len_seq_batch, device, top_k=10)
+            # filtered_scores = filter_movie_scores(predicted_items, genre_topK, genre_movie_mapping, target_batch)
+
+            focal_loss = FocalLoss(alpha=0.1, gamma=10)
+
+            loss2 = focal_loss(predicted_items, target_batch)
             loss = loss2
             loss.backward()
             optimizer.step()
+        
+        
         fold_metrics.add_train_loss(epoch + 1, loss.item())
         if args.report_epoch:
             print(f"Fold {fold} Epoch {epoch + 1:03d}; Train loss: {loss.item():.4f}; Time: {Time.strftime('%H:%M:%S', Time.gmtime(Time.time() - start_time))}")
         if (epoch + 1) % 10 == 0:
+            
             model.eval()
             with torch.no_grad():
                 print(f"Fold {fold}: Evaluation at Epoch {epoch + 1}")
-                test_dict = evaluate(model, genre_model, genre_diff, test_csv, diff, device, movie_genre_mapping)
+                test_dict = evaluate(model, genre_model, genre_diff, test_csv, diff, device, movie_genre_mapping, genre_movie_mapping)
             fold_metrics.add_test_metrics(epoch + 1, test_dict)
-            scheduler.step()
+            scheduler.step(test_dict['loss'])
     with torch.no_grad():
         print(f"Fold {fold}: Final Test Phase")
-        final_test = evaluate(model, genre_model, genre_diff, test_csv, diff, device, movie_genre_mapping)
+        final_test = evaluate(model, genre_model, genre_diff, test_csv, diff, device, movie_genre_mapping, genre_movie_mapping)
         print(f"Fold {fold}: Final Test Loss: {final_test['loss']:.4f}, HR@5: {final_test['HR5']:.4f}")
     fold_metrics.add_test_metrics(args.epoch, final_test)
     os.makedirs("./models", exist_ok=True)
@@ -283,10 +296,11 @@ def train_fold(fold):
 def main():
     NUM_FOLDS = 10
     global movie_genre_mapping
+    global genre_movie_mapping
     mapping_csv = os.path.join(MERGED_DATA_DIR, "movie_to_genre_mapping.csv")
+    genre_mapping_json = os.path.join(MERGED_DATA_DIR, "genre_movie_mapping.json")
     if os.path.exists(mapping_csv):
         mapping_df = pd.read_csv(mapping_csv)
-        # Use the number of movies actually used in training (from your statics file)
         statics_file = os.path.join(MERGED_DATA_DIR, "statics.csv")
         if os.path.exists(statics_file):
             statics_df = pd.read_csv(statics_file)
@@ -301,14 +315,25 @@ def main():
     else:
         print("Mapping file not found. Proceeding without genre filtering.")
         movie_genre_mapping = None
+        
+    genre_mapping_json = os.path.join(MERGED_DATA_DIR, "genre_movie_mapping.json")
+    if os.path.exists(genre_mapping_json):
+        with open(genre_mapping_json, "r", encoding="utf-8") as f:
+            genre_movie_mapping = json.load(f)  # Assign to global variable
+        print("Loaded genre-to-movies mapping")
+    else:
+        print("Genre mapping JSON file not found")
+        genre_movie_mapping = None
+
+    
     if args.tune:
-        tuning_fold = 1
-        args.lr = 0.001
-        args.optimizer = "adamw"
+        tuning_fold = 4
+        args.lr = 0.005
+        args.optimizer = "lamb"
         args.timesteps = 100
-        lr_candidates = [0.1, 0.01, 0.001, 0.0001, 0.00001]
-        optimizer_candidates = ['adam', 'adamw', 'adagrad', 'rmsprop']
-        timesteps_candidates = [i * 100 for i in range(1, 6)]
+        lr_candidates = [0.05, 0.01, 0.005, 0.001]
+        optimizer_candidates = ['lamb', 'adamw', 'adabelief', 'nadam']
+        timesteps_candidates = [i * 50 for i in range(1, 6)]
         tuning_lr_recorder = TuningRecorder("lr", lr_candidates, save_dir="item")
         tuning_optimizer_recorder = TuningRecorder("optimizer", optimizer_candidates, save_dir="item")
         tuning_timesteps_recorder = TuningRecorder("timesteps", timesteps_candidates, save_dir="item")
@@ -363,9 +388,10 @@ def main():
             json.dump(best_candidates, f, indent=2)
         print("Best candidates saved to ./item/best_candidates.json")
     else:
-        args.lr = 0.001
-        args.optimizer = "adamw"
-        args.timesteps = 100
+        tuning_fold = 2
+        args.lr = 0.005
+        args.optimizer = "lamb"
+        args.timesteps = 50
         fold_metrics_list = []
         for fold in range(1, NUM_FOLDS + 1):
             fm = train_fold(fold)
