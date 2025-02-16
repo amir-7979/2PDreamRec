@@ -36,7 +36,7 @@ def parse_args():
     parser.add_argument('--no-tune', action='store_false', dest='tune', help='Disable tuning.')
     parser.add_argument('--epoch', type=int, default=100, help='Number of epochs per fold.')
     parser.add_argument('--random_seed', type=int, default=100, help='Random seed.')
-    parser.add_argument('--batch_size', type=int, default=128, help='Batch size.')
+    parser.add_argument('--batch_size', type=int, default=64, help='Batch size.')
     parser.add_argument('--hidden_factor', type=int, default=64, help='Embedding/hidden size.')
     parser.add_argument('--timesteps', type=int, default=100, help='Timesteps for diffusion.')
     parser.add_argument('--beta_end', type=float, default=0.02, help='Beta end of diffusion.')
@@ -153,7 +153,7 @@ def evaluate(model, genre_model, genre_diff, split_csv, diff, device, movie_genr
         predicted_items = model.decoder(predicted_x)
         genre_topK = get_top_genres(genre_model, genre_diff, genre_seq_batch, len_seq_batch, device, top_k=10)
         filtered_scores = filter_movie_scores(predicted_items, genre_topK, movie_genre_mapping, target_batch)
-        focal_loss = FocalLoss(alpha=0.15, gamma=7)
+        focal_loss = FocalLoss(alpha=0.1, gamma=12)
         loss2 = focal_loss(filtered_scores, target_batch)
         loss = loss2
         losses.append(loss.item())
@@ -250,7 +250,7 @@ def train_fold(fold):
             genre_topK = get_top_genres(genre_model, genre_diff, genre_seq_batch, len_seq_batch, device, top_k=10)
             filtered_scores = filter_movie_scores(predicted_items, genre_topK, movie_genre_mapping, target_batch)
 
-            focal_loss = FocalLoss(alpha=0.15, gamma=7)
+            focal_loss = FocalLoss(alpha=0.1, gamma=12)
             loss2 = focal_loss(filtered_scores, target_batch)
             loss = loss2
             loss.backward()
@@ -302,7 +302,7 @@ def main():
         print("Mapping file not found. Proceeding without genre filtering.")
         movie_genre_mapping = None
     if args.tune:
-        tuning_fold = 1
+        tuning_fold = 4
         args.lr = 0.001
         args.optimizer = "adamw"
         args.timesteps = 100

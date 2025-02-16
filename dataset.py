@@ -210,7 +210,6 @@ if __name__ == "__main__":
     kf_outer = KFold(n_splits=N_FOLDS, shuffle=True, random_state=42)
     fold_no = 1
     for outer_train_index, outer_test_index in kf_outer.split(movie_interactions):
-        print(f"Processing Fold {fold_no}")
         movies_train = [movie_interactions[i] for i in outer_train_index]
         movie_targets_train = [movie_targets[i] for i in outer_train_index]
         genres_train = [genre_interactions[i] for i in outer_train_index]
@@ -221,7 +220,6 @@ if __name__ == "__main__":
         genre_targets_test = [genre_targets[i] for i in outer_test_index]
         save_nested_fold_merged_data(movies_train, movie_targets_train, genres_train, genre_targets_train, fold_no, "train")
         save_nested_fold_merged_data(movies_test, movie_targets_test, genres_test, genre_targets_test, fold_no, "test")
-        print(f"Saved merged fold {fold_no} files.")
         fold_no += 1
     unique_movies = set()
     for seq in movie_interactions:

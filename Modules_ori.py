@@ -6,7 +6,7 @@ import math
 from utility import extract_axis_1, calculate_hit
 
 
-def load_genres_predictor(tenc, tenc_path='models/genre_tenc_fold3.pth', diff_path='models/genre_diff_fold3.pth'):
+def load_genres_predictor(tenc, tenc_path='models/genre_tenc_fold9.pth', diff_path='models/genre_diff_fold9.pth'):
     state_dict = torch.load(tenc_path, map_location='cpu', weights_only=True)
     tenc.load_state_dict(state_dict, strict=False)
     diff = torch.load(diff_path, map_location='cpu', weights_only=True)
@@ -520,7 +520,7 @@ class MovieTenc(Tenc):
 
         # test_item_emb = self.item_embeddings.weight
         # # scores = torch.matmul(x, test_item_emb.transpose(0, 1))
-        # scores = torch.matmul(x / x.norm(dim=-1, keepdim=True),
+        # scores = torch.matmul(x / x.norm(dim=-1, keepdim=True), 
         #               (test_item_emb / test_item_emb.norm(dim=-1, keepdim=True)).transpose(0, 1))
 
         return self.decoder(x)
