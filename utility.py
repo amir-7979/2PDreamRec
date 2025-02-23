@@ -1,461 +1,256 @@
 import os
-import copy
-import math
+import json
 import numpy as np
-import pandas as pd
-from collections import deque
-import torch.nn as nn
-import torch
-import torch.nn.functional as F
-import numpy as np
-from sklearn.metrics import top_k_accuracy_score, ndcg_score
+from collections import defaultdict
+import matplotlib.pyplot as plt
 
-# import tensorflow as tf
-
-
-def extract_axis_1(data, indices):
-    res = []
-    for i in range(data.size(0)):
-        # Log the shape and the index for this sample:
-        if indices[i] >= data.size(1):
-            print(f"Error: For sample {i}, index {indices[i]} out of bounds for tensor shape {data.shape}")
-        res.append(data[i, indices[i], :])
-    return torch.stack(res, dim=0)
-
-
-
-def to_pickled_df(data_directory, **kwargs):
-    for name, df in kwargs.items():
-        df.to_pickle(os.path.join(data_directory, name + '.df'))
-
-
-def pad_history(itemlist, length, pad_item):
-    if len(itemlist) >= length:
-        return itemlist[-length:]
-    if len(itemlist) < length:
-        temp = [pad_item] * (length - len(itemlist))
-        itemlist.extend(temp)
-        return itemlist
-
-
-# def extract_axis_1(data, ind):
-#     """
-#     Get specified elements along the first axis of tensor.
-#     :param data: Tensorflow tensor that will be subsetted.
-#     :param ind: Indices to take (one for each element along axis 0 of data).
-#     :return: Subsetted tensor.
-#     """
-
-#     batch_range = tf.range(tf.shape(data)[0])
-#     indices = tf.stack([batch_range, ind], axis=1)
-#     res = tf.gather_nd(data, indices)
-
-#     return res
-
-
-def normalize(inputs,
-              epsilon=1e-8,
-              scope="ln",
-              reuse=None):
-    '''Applies layer normalization.
-
-    Args:
-      inputs: A tensor with 2 or more dimensions, where the first dimension has
-        `batch_size`.
-      epsilon: A floating number. A very small number for preventing ZeroDivision Error.
-      scope: Optional scope for `variable_scope`.
-      reuse: Boolean, whether to reuse the weights of a previous layer
-        by the same name.
-
-    Returns:
-      A tensor with the same shape and data dtype as `inputs`.
-    '''
-    with tf.variable_scope(scope, reuse=reuse):
-        inputs_shape = inputs.get_shape()
-        params_shape = inputs_shape[-1:]
-
-        mean, variance = tf.nn.moments(inputs, [-1], keep_dims=True)
-        beta = tf.Variable(tf.zeros(params_shape))
-        gamma = tf.Variable(tf.ones(params_shape))
-        normalized = (inputs - mean) / ((variance + epsilon) ** (.5))
-        outputs = gamma * normalized + beta
-
-    return outputs
-
-def calculate_hit(target_batch, topK, topk, hit_purchase, ndcg_purchase):
-    for idx, k in enumerate(topk):
-        for j in range(len(target_batch)):
-            if target_batch[j].item() in topK[j, :k]:
-                hit_purchase[idx] += 1
-                rank = np.where(topK[j, :k] == target_batch[j].item())[0][0] + 1
-                ndcg_purchase[idx] += 1 / np.log2(rank + 1)
-
-
-# class Memory():
-#     def __init__(self):
-#         self.buffer = deque()
-#
-#     def add(self, experience):
-#         self.buffer.append(experience)
-#
-#     def sample(self, batch_size):
-#         idx = np.random.choice(np.arange(len(self.buffer)),
-#                                size=batch_size,
-#                                replace=False)
-#         return [self.buffer[ii] for ii in idx]
-
-class NeuProcessEncoder(nn.Module):
-    def __init__(self, input_size=64, hidden_size=64, output_size=64, dropout_prob=0.4, device=None):
-        super(NeuProcessEncoder, self).__init__()
-        self.device = device
-
-        # Encoder for item embeddings
-        layers = [nn.Linear(input_size, hidden_size),
-                  torch.nn.Dropout(dropout_prob),
-                  nn.ReLU(inplace=True),
-                  nn.Linear(hidden_size, output_size)]
-        self.input_to_hidden = nn.Sequential(*layers)
-
-        # Encoder for latent vector z
-        self.z1_dim = input_size  # 64
-        self.z2_dim = hidden_size  # 64
-        self.z_dim = output_size  # 64
-        self.z_to_hidden = nn.Linear(self.z1_dim, self.z2_dim)
-        self.hidden_to_mu = nn.Linear(self.z2_dim, self.z_dim)
-        self.hidden_to_logsigma = nn.Linear(self.z2_dim, self.z_dim)
-
-    def emb_encode(self, input_tensor):
-        hidden = self.input_to_hidden(input_tensor)
-
-        return hidden
-
-    def aggregate(self, input_tensor):
-        return torch.mean(input_tensor, dim=-2)
-
-    def z_encode(self, input_tensor):
-        hidden = torch.relu(self.z_to_hidden(input_tensor))
-        mu = self.hidden_to_mu(hidden)
-        log_sigma = self.hidden_to_logsigma(hidden)
-        std = torch.exp(0.5 * log_sigma)
-        eps = torch.randn_like(std)
-        z = eps.mul(std).add_(mu)
-        return z, mu, log_sigma
-
-    def encoder(self, input_tensor):
-        z_ = self.emb_encode(input_tensor)
-        z = self.aggregate(z_)
-        self.z, mu, log_sigma = self.z_encode(z)
-        return self.z, mu, log_sigma
-
-    def forward(self, input_tensor):
-        self.z, _, _ = self.encoder(input_tensor)
-        return self.z
-
-
-class MemoryUnit(nn.Module):
-    # clusters_k is k keys
-    def __init__(self, input_size, output_size, emb_size, clusters_k=10):
-        super(MemoryUnit, self).__init__()
-        self.clusters_k = clusters_k
-        self.input_size = input_size
-        self.output_size = output_size
-        self.array = nn.Parameter(init.xavier_uniform_(torch.FloatTensor(self.clusters_k, input_size * output_size)))
-        self.index = nn.Parameter(init.xavier_uniform_(torch.FloatTensor(self.clusters_k, emb_size)))
-        self.softmax = nn.Softmax(dim=-1)
-
-    def forward(self, bias_emb):
-        """
-        bias_emb: [batch_size, 1, emb_size]
-        """
-        att_scores = torch.matmul(bias_emb, self.index.transpose(-1, -2))  # [batch_size, clusters_k]
-        att_scores = self.softmax(att_scores)
-
-        # [batch_size, input_size, output_size]
-        para_new = torch.matmul(att_scores, self.array)  # [batch_size, input_size*output_size]
-        para_new = para_new.view(-1, self.output_size, self.input_size)
-
-        return para_new
-
-    def reg_loss(self, reg_weights=1e-2):
-        loss_1 = reg_weights * self.array.norm(2)
-        loss_2 = reg_weights * self.index.norm(2)
-
-        return loss_1 + loss_2
-
-
-class FeedForward(nn.Module):
+class FoldMetrics:
     """
-    Point-wise feed-forward layer is implemented by two dense layers.
-    Args:
-        input_tensor (torch.Tensor): the input of the point-wise feed-forward layer
-    Returns:
-        hidden_states (torch.Tensor): the output of the point-wise feed-forward layer
+    Records metrics for one fold.
+    Stores a list of (epoch, train_loss) tuples and a dictionary for test metrics.
     """
+    def __init__(self, fold_number):
+        self.fold_number = fold_number
+        self.train_losses = []  # list of tuples: (epoch, loss)
+        self.test_metrics = {}  # dict: epoch -> metrics dict
 
-    def __init__(
-            self, hidden_size, inner_size, hidden_dropout_prob, hidden_act, layer_norm_eps
-    ):
-        super(FeedForward, self).__init__()
-        self.dense_1 = nn.Linear(hidden_size, inner_size)
-        self.intermediate_act_fn = self.get_hidden_act(hidden_act)
+    def add_train_loss(self, epoch, loss):
+        self.train_losses.append((epoch, loss))
 
-        self.dense_2 = nn.Linear(inner_size, hidden_size)
-        self.LayerNorm = nn.LayerNorm(hidden_size, eps=layer_norm_eps)
-        self.dropout = nn.Dropout(hidden_dropout_prob)
+    def add_test_metrics(self, epoch, metrics):
+        self.test_metrics[epoch] = metrics
 
-    def get_hidden_act(self, act):
-        ACT2FN = {
-            "gelu": self.gelu,
-            "relu": F.relu,
-            "swish": self.swish,
-            "tanh": torch.tanh,
-            "sigmoid": torch.sigmoid,
+    def __str__(self):
+        s = f"Fold {self.fold_number} Metrics:\n"
+        s += "Epoch\tTrainLoss\tTestLoss\tHR@5\tNDCG@5\tHR@10\tNDCG@10\n"
+        for epoch in sorted(self.test_metrics.keys()):
+            train_loss = next((tl for ep, tl in self.train_losses if ep == epoch), None)
+            test = self.test_metrics.get(epoch, None)
+            test_loss = test['loss'] if test is not None else float('nan')
+            s += (f"{epoch}\t{train_loss:.4f}\t{test_loss:.4f}\t"
+                  f"{test['HR5']:.4f}\t{test['NDCG5']:.4f}\t{test['HR10']:.4f}\t{test['NDCG10']:.4f}\n")
+        return s
+
+class AverageMetrics:
+    """
+    Averages the metrics from multiple folds.
+    """
+    def __init__(self):
+        self.avg_train_loss = {}
+        self.avg_test_metrics = {}
+        self.num_folds = 0
+
+    def add_fold_metrics(self, fold_metric):
+        self.num_folds += 1
+        for epoch, loss in fold_metric.train_losses:
+            self.avg_train_loss.setdefault(epoch, []).append(loss)
+        for epoch, metrics in fold_metric.test_metrics.items():
+            self.avg_test_metrics.setdefault(epoch, []).append(metrics)
+
+    def compute_averages(self):
+        self.avg_train_loss = {epoch: np.mean(losses) for epoch, losses in self.avg_train_loss.items()}
+
+        def avg_dict(metrics_list):
+            avg_d = {}
+            for key in metrics_list[0].keys():
+                avg_d[key] = np.mean([m[key] for m in metrics_list])
+            return avg_d
+
+        self.avg_test_metrics = {epoch: avg_dict(metrics_list) for epoch, metrics_list in self.avg_test_metrics.items()}
+
+    def __str__(self):
+        s = "Average Metrics Across Folds:\n"
+        s += "Epoch\tAvgTrainLoss\tAvgTestLoss\tAvgHR@5\tAvgNDCG@5\tAvgHR@10\tAvgNDCG@10\n"
+        for epoch in sorted(self.avg_test_metrics.keys()):
+            train_loss = self.avg_train_loss.get(epoch, None)
+            test = self.avg_test_metrics.get(epoch, None)
+            test_loss = test['loss'] if test is not None else float('nan')
+            s += (f"{epoch}\t{train_loss:.4f}\t{test_loss:.4f}\t"
+                  f"{test['HR5']:.4f}\t{test['NDCG5']:.4f}\t{test['HR10']:.4f}\t{test['NDCG10']:.4f}\n")
+        return s
+
+class LossRecorder:
+    """
+    Records per-epoch losses for training and test over folds.
+    Can save to and load from a JSON file and plot the average curves.
+    """
+    def __init__(self, save_dir=None):
+        self.fold_losses = {}  # key: fold number
+        self.save_dir = save_dir if save_dir is not None else "."
+
+    def add_fold(self, fold, train_losses, test_losses):
+        self.fold_losses[fold] = {
+            'train': train_losses,
+            'test': test_losses
         }
-        return ACT2FN[act]
 
-    def gelu(self, x):
-        """Implementation of the gelu activation function.
-        For information: OpenAI GPT's gelu is slightly different (and gives slightly different results)::
-            0.5 * x * (1 + torch.tanh(math.sqrt(2 / math.pi) * (x + 0.044715 * torch.pow(x, 3))))
-        Also see https://arxiv.org/abs/1606.08415
-        """
-        return x * 0.5 * (1.0 + torch.erf(x / math.sqrt(2.0)))
+    def compute_average_losses(self):
+        all_train = defaultdict(list)
+        for data in self.fold_losses.values():
+            for epoch, loss in enumerate(data.get('train', []), start=1):
+                all_train[epoch].append(loss)
+        avg_train = {epoch: np.mean(losses) for epoch, losses in all_train.items()}
 
-    def swish(self, x):
-        return x * torch.sigmoid(x)
+        all_test = defaultdict(list)
+        for data in self.fold_losses.values():
+            for i, loss in enumerate(data.get('test', [])):
+                epoch = (i + 1) * 10
+                all_test[epoch].append(loss)
+        avg_test = {epoch: np.mean(losses) for epoch, losses in all_test.items()}
 
-    def forward(self, input_tensor):
-        hidden_states = self.dense_1(input_tensor)
-        hidden_states = self.intermediate_act_fn(hidden_states)
+        return avg_train, avg_test
 
-        hidden_states = self.dense_2(hidden_states)
-        hidden_states = self.dropout(hidden_states)
-        hidden_states = self.LayerNorm(hidden_states + input_tensor)
+    def save_to_file(self, filename=None):
+        if filename is None:
+            filename = os.path.join(self.save_dir, "loss_data.json")
+        serializable = {str(fold): self.fold_losses[fold] for fold in self.fold_losses}
+        with open(filename, 'w') as f:
+            json.dump(serializable, f, indent=2)
+        print(f"Loss data saved to {filename}")
 
-        return hidden_states
+    @classmethod
+    def load_from_file(cls, filename):
+        with open(filename, 'r') as f:
+            data = json.load(f)
+        lr_obj = cls()
+        lr_obj.fold_losses = {int(fold): data_fold for fold, data_fold in data.items()}
+        return lr_obj
 
+    def plot_losses(self):
+        avg_train, avg_test = self.compute_average_losses()
+        epochs_train = sorted(avg_train.keys())
+        epochs_test = sorted(avg_test.keys())
+        plt.figure(figsize=(10, 6))
+        plt.plot(epochs_train, [avg_train[e] for e in epochs_train],
+                 color='blue', linestyle='-', label='Train Loss')
+        plt.plot(epochs_test, [avg_test[e] for e in epochs_test],
+                 color='red', linestyle='-', label='Test Loss')
+        plt.xlabel("Epoch")
+        plt.ylabel("Loss")
+        plt.title("Average Loss per Epoch (10-Fold CV)")
+        plt.legend()
+        plt.grid(True)
+        plt.show()
 
-class ItemToInterestAggregation(nn.Module):
-    def __init__(self, seq_len, hidden_size, k_interests=5):
-        super().__init__()
-        self.k_interests = k_interests  # k latent interests
-        self.theta = nn.Parameter(torch.randn([hidden_size, k_interests]))
-
-    def forward(self, input_tensor):  # [B, L, d] -> [B, k, d]
-        D_matrix = torch.matmul(input_tensor, self.theta)  # [B, L, k]
-        D_matrix = nn.Softmax(dim=-2)(D_matrix)
-        result = torch.einsum("nij, nik -> nkj", input_tensor, D_matrix)  # #[B, k, d]
-
-        return result
-
-
-class LightMultiHeadAttention(nn.Module):
-    def __init__(
-            self,
-            n_heads,
-            k_interests,
-            hidden_size,
-            seq_len,
-            hidden_dropout_prob,
-            attn_dropout_prob,
-            layer_norm_eps,
-    ):
-        super(LightMultiHeadAttention, self).__init__()
-        if hidden_size % n_heads != 0:
-            raise ValueError(
-                "The hidden size (%d) is not a multiple of the number of attention "
-                "heads (%d)" % (hidden_size, n_heads)
-            )
-
-        self.num_attention_heads = n_heads
-        self.attention_head_size = int(hidden_size / n_heads)
-        self.all_head_size = self.num_attention_heads * self.attention_head_size
-
-        # initialization for low-rank decomposed self-attention
-        self.query = nn.Linear(hidden_size, self.all_head_size)
-        self.key = nn.Linear(hidden_size, self.all_head_size)
-        self.value = nn.Linear(hidden_size, self.all_head_size)
-
-        self.attpooling_key = ItemToInterestAggregation(
-            seq_len, hidden_size, k_interests
-        )
-        self.attpooling_value = ItemToInterestAggregation(
-            seq_len, hidden_size, k_interests
-        )
-
-        # initialization for decoupled position encoding
-        self.attn_scale_factor = 2
-        self.pos_q_linear = nn.Linear(hidden_size, self.all_head_size)
-        self.pos_k_linear = nn.Linear(hidden_size, self.all_head_size)
-        self.pos_scaling = (
-                float(self.attention_head_size * self.attn_scale_factor) ** -0.5
-        )
-        self.pos_ln = nn.LayerNorm(hidden_size, eps=layer_norm_eps)
-
-        self.attn_dropout = nn.Dropout(attn_dropout_prob)
-
-        self.dense = nn.Linear(hidden_size, hidden_size)
-        self.LayerNorm = nn.LayerNorm(hidden_size, eps=layer_norm_eps)
-        self.out_dropout = nn.Dropout(hidden_dropout_prob)
-
-    def transpose_for_scores(self, x):  # transfor to multihead
-        new_x_shape = x.size()[:-1] + (
-            self.num_attention_heads,
-            self.attention_head_size,
-        )
-        x = x.view(*new_x_shape)
-        return x.permute(0, 2, 1, 3)
-
-    def forward(self, input_tensor, pos_emb):
-        # linear map
-        mixed_query_layer = self.query(input_tensor)
-        mixed_key_layer = self.key(input_tensor)
-        mixed_value_layer = self.value(input_tensor)
-
-        # low-rank decomposed self-attention: relation of items
-        query_layer = self.transpose_for_scores(mixed_query_layer)
-        key_layer = self.transpose_for_scores(self.attpooling_key(mixed_key_layer))
-        value_layer = self.transpose_for_scores(
-            self.attpooling_value(mixed_value_layer)
-        )
-
-        attention_scores = torch.matmul(query_layer, key_layer.transpose(-1, -2))
-        attention_scores = attention_scores / math.sqrt(self.attention_head_size)
-
-        # normalize the attention scores to probabilities.
-        attention_probs = nn.Softmax(dim=-2)(attention_scores)
-        attention_probs = self.attn_dropout(attention_probs)
-        context_layer_item = torch.matmul(attention_probs, value_layer)
-
-        # decoupled position encoding: relation of positions
-        value_layer_pos = self.transpose_for_scores(mixed_value_layer)
-        pos_emb = self.pos_ln(pos_emb).unsqueeze(0)
-        pos_query_layer = (
-                self.transpose_for_scores(self.pos_q_linear(pos_emb)) * self.pos_scaling
-        )
-        pos_key_layer = self.transpose_for_scores(self.pos_k_linear(pos_emb))
-
-        abs_pos_bias = torch.matmul(pos_query_layer, pos_key_layer.transpose(-1, -2))
-        abs_pos_bias = abs_pos_bias / math.sqrt(self.attention_head_size)
-        abs_pos_bias = nn.Softmax(dim=-2)(abs_pos_bias)
-
-        context_layer_pos = torch.matmul(abs_pos_bias, value_layer_pos)
-
-        context_layer = context_layer_item + context_layer_pos
-
-        context_layer = context_layer.permute(0, 2, 1, 3).contiguous()
-        new_context_layer_shape = context_layer.size()[:-2] + (self.all_head_size,)
-        context_layer = context_layer.view(*new_context_layer_shape)
-        hidden_states = self.dense(context_layer)
-        hidden_states = self.out_dropout(hidden_states)
-        hidden_states = self.LayerNorm(hidden_states + input_tensor)
-
-        return hidden_states
-
-
-class LightTransformerLayer(nn.Module):
+class MetricsRecorder:
     """
-    One transformer layer consists of a multi-head self-attention layer and a point-wise feed-forward layer.
-    Args:
-        hidden_states (torch.Tensor): the input of the multi-head self-attention sublayer
-        attention_mask (torch.Tensor): the attention mask for the multi-head self-attention sublayer
-    Returns:
-        feedforward_output (torch.Tensor): the output of the point-wise feed-forward sublayer, is the output of the transformer layer
+    Records test metrics (HR@5, HR@10, NDCG@5, NDCG@10) from each fold at evaluation epochs.
     """
+    def __init__(self, save_dir=None):
+        self.metrics = defaultdict(list)
+        self.save_dir = save_dir if save_dir is not None else "."
 
-    def __init__(
-            self,
-            n_heads,
-            k_interests,
-            hidden_size,
-            seq_len,
-            intermediate_size,
-            hidden_dropout_prob,
-            attn_dropout_prob,
-            hidden_act,
-            layer_norm_eps,
-    ):
-        super(LightTransformerLayer, self).__init__()
-        self.multi_head_attention = LightMultiHeadAttention(
-            n_heads,
-            k_interests,
-            hidden_size,
-            seq_len,
-            hidden_dropout_prob,
-            attn_dropout_prob,
-            layer_norm_eps,
-        )
-        self.feed_forward = FeedForward(
-            hidden_size,
-            intermediate_size,
-            hidden_dropout_prob,
-            hidden_act,
-            layer_norm_eps,
-        )
+    def add_fold(self, fold_metric):
+        for epoch, met in fold_metric.test_metrics.items():
+            self.metrics[epoch].append(met)
 
-    def forward(self, hidden_states, pos_emb):
-        attention_output = self.multi_head_attention(hidden_states, pos_emb)
-        feedforward_output = self.feed_forward(attention_output)
-        return feedforward_output
+    def compute_average(self):
+        avg = {}
+        for epoch, met_list in self.metrics.items():
+            avg[epoch] = {k: np.mean([m[k] for m in met_list]) for k in met_list[0].keys()}
+        return avg
 
+    def save_to_file(self, filename=None):
+        if filename is None:
+            filename = os.path.join(self.save_dir, "average_test_metrics.txt")
+        avg = self.compute_average()
+        with open(filename, 'w') as f:
+            f.write("Epoch\tHR@5\tNDCG@5\tHR@10\tNDCG@10\n")
+            for epoch in sorted(avg.keys()):
+                m = avg[epoch]
+                f.write(f"{epoch}\t{m['HR5']:.4f}\t{m['NDCG5']:.4f}\t{m['HR10']:.4f}\t{m['NDCG10']:.4f}\n")
+        print(f"Average test metrics saved to {filename}")
 
-class LightTransformerEncoder(nn.Module):
-    r"""One LightTransformerEncoder consists of several LightTransformerLayers.
-    Args:
-        n_layers(num): num of transformer layers in transformer encoder. Default: 2
-        n_heads(num): num of attention heads for multi-head attention layer. Default: 2
-        hidden_size(num): the input and output hidden size. Default: 64
-        inner_size(num): the dimensionality in feed-forward layer. Default: 256
-        hidden_dropout_prob(float): probability of an element to be zeroed. Default: 0.5
-        attn_dropout_prob(float): probability of an attention score to be zeroed. Default: 0.5
-        hidden_act(str): activation function in feed-forward layer. Default: 'gelu'.
-            candidates: 'gelu', 'relu', 'swish', 'tanh', 'sigmoid'
-        layer_norm_eps(float): a value added to the denominator for numerical stability. Default: 1e-12
+    def plot_metrics(self):
+        avg = self.compute_average()
+        epochs = sorted(avg.keys())
+        hr5 = [avg[e]['HR5'] for e in epochs]
+        ndcg5 = [avg[e]['NDCG5'] for e in epochs]
+        hr10 = [avg[e]['HR10'] for e in epochs]
+        ndcg10 = [avg[e]['NDCG10'] for e in epochs]
+        plt.figure(figsize=(10, 6))
+        plt.plot(epochs, hr5, color='blue', linestyle='-', label='HR@5')
+        plt.plot(epochs, hr10, color='red', linestyle='-', label='HR@10')
+        plt.plot(epochs, ndcg5, color='green', linestyle='-', label='NDCG@5')
+        plt.plot(epochs, ndcg10, color='purple', linestyle='-', label='NDCG@10')
+        plt.xlabel("Evaluation Epoch")
+        plt.ylabel("Metric Value")
+        plt.title("Average Test Metrics (10-Fold CV)")
+        plt.legend()
+        plt.grid(True)
+        plt.show()
+
+class TuningRecorder:
     """
+    Records tuning metrics (HR@10) for each candidate parameter over evaluation epochs.
+    """
+    def __init__(self, parameter_name, candidates=None, save_dir=None):
+        self.parameter_name = parameter_name
+        self.candidates = candidates if candidates is not None else []
+        self.data = defaultdict(lambda: defaultdict(list))
+        self.save_dir = save_dir if save_dir is not None else "."
 
-    def __init__(
-            self,
-            n_layers=2,
-            n_heads=2,
-            k_interests=5,
-            hidden_size=64,
-            seq_len=50,
-            inner_size=256,
-            hidden_dropout_prob=0.5,
-            attn_dropout_prob=0.5,
-            hidden_act="gelu",
-            layer_norm_eps=1e-12,
-    ):
+    def record(self, candidate, eval_epoch, hr10):
+        self.data[candidate][eval_epoch].append(hr10)
 
-        super(LightTransformerEncoder, self).__init__()
-        layer = LightTransformerLayer(
-            n_heads,
-            k_interests,
-            hidden_size,
-            seq_len,
-            inner_size,
-            hidden_dropout_prob,
-            attn_dropout_prob,
-            hidden_act,
-            layer_norm_eps,
-        )
-        self.layer = nn.ModuleList([copy.deepcopy(layer) for _ in range(n_layers)])
+    def compute_average(self):
+        avg_data = {}
+        for candidate, d in self.data.items():
+            avg_data[candidate] = {epoch: np.mean(hr_list) for epoch, hr_list in d.items()}
+        return avg_data
 
-    def forward(self, hidden_states, pos_emb, output_all_encoded_layers=True):
+    def save_to_file(self, filename=None):
+        if filename is None:
+            filename = os.path.join(self.save_dir, f"tuning_{self.parameter_name}.json")
+        avg_data = self.compute_average()
+        serializable = {str(candidate): {str(epoch): float(hr) for epoch, hr in avg_dict.items()}
+                        for candidate, avg_dict in avg_data.items()}
+        with open(filename, 'w') as f:
+            json.dump(serializable, f, indent=2)
+        print(f"Tuning data for {self.parameter_name} saved to {filename}")
+
+    @classmethod
+    def load_from_file(cls, parameter_name, filename, save_dir=None):
+        with open(filename, 'r') as f:
+            data = json.load(f)
+        tr = cls(parameter_name, save_dir=save_dir)
+        for candidate, epoch_dict in data.items():
+            candidate_val = float(candidate) if '.' in candidate else int(candidate)
+            for epoch, hr in epoch_dict.items():
+                epoch_val = int(epoch)
+                tr.data[candidate_val][epoch_val].append(hr)
+        return tr
+
+    def plot(self):
+        avg_data = self.compute_average()
+        plt.figure(figsize=(10, 6))
+        colors = plt.cm.tab10.colors
+        for i, (candidate, epoch_dict) in enumerate(sorted(avg_data.items())):
+            epochs = sorted(epoch_dict.keys())
+            hr_values = [epoch_dict[e] for e in epochs]
+            plt.plot(epochs, hr_values, color=colors[i % len(colors)], linestyle='-',
+                     label=f"{self.parameter_name}={candidate}")
+        plt.xlabel("Evaluation Epoch")
+        plt.ylabel("Average HR@10")
+        plt.title(f"Tuning Results for {self.parameter_name}")
+        plt.legend()
+        plt.grid(True)
+        plt.show()
+
+    def find_best(self):
         """
-        Args:
-            hidden_states (torch.Tensor): the input of the TrandformerEncoder
-            attention_mask (torch.Tensor): the attention mask for the input hidden_states
-            output_all_encoded_layers (Bool): whether output all transformer layers' output
-        Returns:
-            all_encoder_layers (list): if output_all_encoded_layers is True, return a list consists of all transformer layers' output,
-            otherwise return a list only consists of the output of last transformer layer.
+        Finds the candidate with the highest average HR@10 at evaluation epoch 100.
+        If epoch 100 is not available for a candidate, it uses the maximum average among its epochs.
         """
-        all_encoder_layers = []
-        for layer_module in self.layer:
-            hidden_states = layer_module(hidden_states, pos_emb)
-            if output_all_encoded_layers:
-                all_encoder_layers.append(hidden_states)
-        if not output_all_encoded_layers:
-            all_encoder_layers.append(hidden_states)
-        return all_encoder_layers
+        avg_data = self.compute_average()
+        best = -np.inf
+        best_candidate = None
+        for candidate, epoch_dict in avg_data.items():
+            if 100 in epoch_dict:
+                avg_final = epoch_dict[100]
+            else:
+                avg_final = max(epoch_dict.values()) if epoch_dict else -np.inf
+            if avg_final > best:
+                best = avg_final
+                best_candidate = candidate
+        return best_candidate
