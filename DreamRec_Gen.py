@@ -224,10 +224,10 @@ def main():
         tuning_fold = 1
         args.lr = 0.01
         args.optimizer = "nadam"
-        args.timesteps = 250
+        args.timesteps = 200
         lr_candidates = [0.05, 0.01, 0.005, 0.001]
         optimizer_candidates = ['lamb', 'adamw', 'adabelief', 'nadam']
-        timesteps_candidates = [i * 50 for i in range(1, 6)]
+        timesteps_candidates = [200, 400, 600, 800]
         tuning_lr_recorder = TuningRecorder("lr", lr_candidates, save_dir="category")
         tuning_optimizer_recorder = TuningRecorder("optimizer", optimizer_candidates, save_dir="category")
         tuning_timesteps_recorder = TuningRecorder("timesteps", timesteps_candidates, save_dir="category")
@@ -287,7 +287,7 @@ def main():
         # --------------------- Full 10-Fold CV Mode ---------------------
         args.lr = 0.01
         args.optimizer = "nadam"
-        args.timesteps = 250
+        args.timesteps = 200
         fold_metrics_list = []
         for fold in range(1, NUM_FOLDS + 1):
             fm = train_fold(fold)

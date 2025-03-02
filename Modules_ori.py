@@ -521,17 +521,17 @@ class MovieTenc(Tenc):
 
         return res
 
-    def predict(self, states, len_states, diff, genres_embd):
+    def predict(self, states, len_states, h, x, diff, genres_embd):
         # hidden
         inputs_emb = self.item_embeddings(states)
         inputs_emb += self.positional_embeddings(torch.arange(self.state_size).to(self.device))
         seq = self.emb_dropout(inputs_emb)
         mask = torch.ne(states, self.item_num).float().unsqueeze(-1).to(self.device)
-        seq *= mask
+        #seq *= mask
         seq_normalized = self.ln_1(seq)
         mh_attn_out = self.mh_attn(seq_normalized, seq)
         ff_out = self.feed_forward(self.ln_2(mh_attn_out))
-        ff_out *= mask
+        #ff_out *= mask
         ff_out = self.ln_3(ff_out)
         state_hidden = extract_axis_1(ff_out, len_states - 1)
         h = state_hidden.squeeze()
@@ -541,7 +541,7 @@ class MovieTenc(Tenc):
 
         # test_item_emb = self.item_embeddings.weight
         # # scores = torch.matmul(x, test_item_emb.transpose(0, 1))
-        # scores = torch.matmul(x / x.norm(dim=-1, keepdim=True), 
+        # scores = torch.matmul(x / x.norm(dim=-1, keepdim=True),
         #               (test_item_emb / test_item_emb.norm(dim=-1, keepdim=True)).transpose(0, 1))
 
         return self.decoder(x)

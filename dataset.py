@@ -23,6 +23,7 @@ TRAIN_SEQ_LENGTH = RAW_SEQ_LENGTH - 1  # The training sequence length (i.e. with
 
 N_FOLDS = 10  # Number of outer folds for nested CV
 
+
 # -----------------------------
 # Helper Function: Padding by Last Sequence
 # -----------------------------
@@ -38,6 +39,7 @@ def pad_by_last_sequence(seq, desired_length):
         while len(pad) < missing:
             pad.extend(seq[-min(missing - len(pad), current_length):])
     return seq + pad
+
 
 # -----------------------------
 # Download and Extraction
@@ -57,6 +59,7 @@ def download_and_extract():
         zip_ref.extractall(DATA_DIR)
     print("Extraction complete!")
 
+
 # -----------------------------
 # Helper Functions for Reindexing
 # -----------------------------
@@ -66,11 +69,13 @@ def reindex_movies(movie_df):
     movie_df['movieId'] = movie_df['movieId'].map(new_mapping)
     return movie_df, new_mapping
 
+
 def reindex_merged_data(df):
     unique_ids = sorted(df['movieId'].unique())
     new_mapping = {old_id: new_id for new_id, old_id in enumerate(unique_ids, start=1)}
     df['movieId'] = df['movieId'].map(new_mapping)
     return df, new_mapping
+
 
 # -----------------------------
 # Data Loading and Filtering
@@ -94,20 +99,18 @@ def load_data():
     return merged
 
 
-
-
-
-
 import os
 import pandas as pd
 import json
 
+
 def build_genre_movie_mapping(movies_path, output_path):
-    movies = pd.read_csv(movies_path, sep="::", engine="python", names=["movieId", "title", "genres"], encoding="ISO-8859-1")
+    movies = pd.read_csv(movies_path, sep="::", engine="python", names=["movieId", "title", "genres"],
+                         encoding="ISO-8859-1")
     genre_movie_mapping = {}
     genre2id = {}
     current_genre_id = 0
-    
+
     for _, row in movies.iterrows():
         movie_id = row["movieId"]
         genres = row["genres"].split("|")
@@ -118,22 +121,19 @@ def build_genre_movie_mapping(movies_path, output_path):
                 current_genre_id += 1
             genre_id = genre2id[genre]
             genre_movie_mapping[int(genre_id)].append(movie_id)
-    
+
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(genre_movie_mapping, f, indent=4)
-
-
-
-
 
 
 def filter_users(data, min_interactions=5, max_interactions=4000, min_high_rating=5):
     user_counts = data['userId'].value_counts()
     valid_users_total = user_counts[(user_counts >= min_interactions) & (user_counts <= max_interactions)].index
     data = data[data['userId'].isin(valid_users_total)]
-    high_rating_counts = data[data['rating'] >= 4].groupby('userId').size()
+    high_rating_counts = data[data['rating'] >= 0].groupby('userId').size()
     valid_high_rating_users = high_rating_counts[high_rating_counts >= min_high_rating].index
     return data[data['userId'].isin(valid_high_rating_users)]
+
 
 # -----------------------------
 # Build Interactions
@@ -173,6 +173,7 @@ def build_interactions(data):
         genre_targets.append(genre2id[target_genre_str])
     return movie_interactions, genre_interactions, movie_targets, genre_targets, genre2id
 
+
 # -----------------------------
 # Save Merged Nested Fold Data
 # -----------------------------
@@ -199,48 +200,60 @@ def reindex_filtered_data(df):
     return df, new_mapping
 
 
-# -----------------------------
-# Main Nested Splitting Procedure (No Validation)
-# -----------------------------
 if __name__ == "__main__":
     download_and_extract()
     data = load_data()
     print("Data loaded:", data.shape)
-    filtered_data = filter_users(data)
-    filtered_data, movie_mapping = reindex_filtered_data(filtered_data)
 
-    # Optionally, you can filter popular movies:
-    # filtered_data = filter_popular_movies(filtered_data)
-    print("Filtered data:", filtered_data.shape)
-    movie_interactions, genre_interactions, movie_targets, genre_targets, genre2id = build_interactions(filtered_data)
-    print("Number of interaction sequences:", len(movie_interactions))
-    print("Number of unique genres:", len(genre2id))
+    # Reindex the data without filtering
+    data, movie_mapping = reindex_filtered_data(data)
+    print("Reindexed data:", data.shape)
+
+    # Get unique users for KFold splitting
+    unique_users = data['userId'].unique()
     kf_outer = KFold(n_splits=N_FOLDS, shuffle=True, random_state=42)
     fold_no = 1
-    for outer_train_index, outer_test_index in kf_outer.split(movie_interactions):
-        movies_train = [movie_interactions[i] for i in outer_train_index]
-        movie_targets_train = [movie_targets[i] for i in outer_train_index]
-        genres_train = [genre_interactions[i] for i in outer_train_index]
-        genre_targets_train = [genre_targets[i] for i in outer_train_index]
-        movies_test = [movie_interactions[i] for i in outer_test_index]
-        movie_targets_test = [movie_targets[i] for i in outer_test_index]
-        genres_test = [genre_interactions[i] for i in outer_test_index]
-        genre_targets_test = [genre_targets[i] for i in outer_test_index]
-        save_nested_fold_merged_data(movies_train, movie_targets_train, genres_train, genre_targets_train, fold_no, "train")
-        save_nested_fold_merged_data(movies_test, movie_targets_test, genres_test, genre_targets_test, fold_no, "test")
+    for train_idx, test_idx in kf_outer.split(unique_users):
+        # Get the user IDs for train and test splits
+        train_users = unique_users[train_idx]
+        test_users = unique_users[test_idx]
+
+        # Create train and test datasets based on users
+        train_data = data[data['userId'].isin(train_users)]
+        test_data = data[data['userId'].isin(test_users)]
+
+        # Apply filtering only on the training set
+        filtered_train_data = filter_users(train_data)
+
+        # Build interactions for the train set (using filtered train data)
+        movie_interactions_train, genre_interactions_train, movie_targets_train, genre_targets_train, genre2id_train = build_interactions(
+            filtered_train_data)
+
+        # Build interactions for the test set (without filtering)
+        movie_interactions_test, genre_interactions_test, movie_targets_test, genre_targets_test, genre2id_test = build_interactions(
+            test_data)
+
+        # Save the nested fold data
+        save_nested_fold_merged_data(movie_interactions_train, movie_targets_train, genre_interactions_train,
+                                     genre_targets_train, fold_no, "train")
+        save_nested_fold_merged_data(movie_interactions_test, movie_targets_test, genre_interactions_test,
+                                     genre_targets_test, fold_no, "test")
+
         fold_no += 1
+
+    # (Optional) If you need overall statistics, compute them using either the full data or a merged version.
     unique_movies = set()
-    for seq in movie_interactions:
+    for seq in movie_interactions_train + movie_interactions_test:
         unique_movies.update(seq)
-    unique_movies.update(movie_targets)
+    unique_movies.update(movie_targets_train + movie_targets_test)
     movie_count = len(unique_movies)
-    num_users = len(movie_interactions)
-    num_genres = len(genre2id)
-    avg_movie_seq_length = np.mean([len(seq) for seq in movie_interactions])
-    avg_genre_seq_length = np.mean([len(seq) for seq in genre_interactions])
+    num_users = len(data['userId'].unique())
+    num_genres = len(genre2id_train)  # or merge both genre mappings if needed
+    avg_movie_seq_length = np.mean([len(seq) for seq in (movie_interactions_train + movie_interactions_test)])
+    avg_genre_seq_length = np.mean([len(seq) for seq in (genre_interactions_train + genre_interactions_test)])
     statics_dict = {
         "num_users": num_users,
-        "num_movies": movie_count,   # Now computed from the reindexed interactions
+        "num_movies": movie_count,  # computed from reindexed interactions
         "num_genres": num_genres,
         "train_seq_length": TRAIN_SEQ_LENGTH,
         "raw_seq_length": RAW_SEQ_LENGTH,
@@ -251,7 +264,9 @@ if __name__ == "__main__":
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     statics_df.to_csv(os.path.join(OUTPUT_DIR, "statics.csv"), index=False)
     print("Saved statics.csv with dataset information.")
-    pd.DataFrame(list(genre2id.items()), columns=['genre', 'id']).to_csv(
+
+    # Save genre mapping (using the training mapping, or merge with test mapping as desired)
+    pd.DataFrame(list(genre2id_train.items()), columns=['genre', 'id']).to_csv(
         os.path.join(OUTPUT_DIR, "genre_mapping.csv"), index=False
     )
     movies_path = os.path.join(EXTRACTED_DIR, "movies.dat")
