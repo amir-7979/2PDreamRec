@@ -193,7 +193,6 @@ def train_fold(fold):
     global genre_movie_mapping
     print(f"\n========== Fold {fold} ==========")
     fold_metrics = FoldMetrics(fold)
-    # Use the pre-saved CSV files for this fold.
     train_csv = f"train_fold{fold}.df"
     test_csv = f"test_fold{fold}.df"
     train_df = pd.read_csv(os.path.join(MERGED_DATA_DIR, train_csv))

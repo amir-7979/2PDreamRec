@@ -209,9 +209,6 @@ def train_fold(fold):
                 test_met = evaluate(model, diff, test_csv, device)
             fold_metrics.add_test_metrics(epoch + 1, test_met)
             scheduler.step()
-    os.makedirs("./category", exist_ok=True)
-    np.savetxt(f"./category/fold{fold}_train_loss.txt", np.array(epoch_train_losses))
-    print(f"Saved fold {fold} training losses to ./category/fold{fold}_train_loss.txt")
     os.makedirs("./models", exist_ok=True)
     torch.save(model.state_dict(), f"./models/genre_tenc_fold{fold}.pth")
     torch.save(diff, f"./models/genre_diff_fold{fold}.pth")
@@ -292,8 +289,7 @@ def main():
             print("Results for Fold", fold)
             print(fm)
             os.makedirs("./category", exist_ok=True)
-            with open(f"./category/fold{fold}_metrics.txt", "w") as f:
-                f.write(str(fm))
+           
         avg_metrics = AverageMetrics()
         for fm in fold_metrics_list:
             avg_metrics.add_fold_metrics(fm)
