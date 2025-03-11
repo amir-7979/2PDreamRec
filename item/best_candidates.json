@@ -1,0 +1,4 @@
+{
+  "scheduler_factor": 0.5,
+  "scheduler_eps": 1e-16
+}

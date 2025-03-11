@@ -1,0 +1,8 @@
+statistic,value
+num_users,6040.0
+num_movies,2831.0
+num_genres,18.0
+train_seq_length,3.0
+raw_seq_length,4.0
+avg_movie_seq_length,3.0
+avg_genre_seq_length,3.0
