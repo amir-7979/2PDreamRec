@@ -22,7 +22,9 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 logging.getLogger().setLevel(logging.INFO)
 MERGED_DATA_DIR = "data"
 
-
+############################################
+# Dataset Definition for Genre Model
+############################################
 class GenreDataset(Dataset):
     def __init__(self, dataframe):
         self.genre_seq = dataframe['genre_seq'].tolist()
@@ -39,7 +41,6 @@ class GenreDataset(Dataset):
         return (torch.tensor(eval(self.genre_seq[idx]), dtype=torch.long),
                 torch.tensor(self.genre_len[idx], dtype=torch.long),
                 torch.tensor(self.genre_target[idx], dtype=torch.long))
-
 
 ############################################
 # Argument Parsing and Setup
@@ -69,11 +70,11 @@ def parse_args():
                         help='Optimizer type: [adam, adamw, adagrad, rmsprop].')
     parser.add_argument('--beta_sche', nargs='?', default='linear', help='Beta schedule: [linear, exp, cosine, sqrt].')
     parser.add_argument('--descri', type=str, default='', help='Description of the run.')
+    # New argument: exp_length to override sequence length for experimental folds.
+    parser.add_argument('--exp_length', type=int, default=None, help='Sequence length for experimental runs (training sequence length, i.e. without target).')
     return parser.parse_args()
 
-
 args = parse_args()
-
 
 def setup_seed(seed):
     torch.manual_seed(seed)
@@ -82,15 +83,12 @@ def setup_seed(seed):
     random.seed(seed)
     torch.backends.cudnn.deterministic = True
 
-
 setup_seed(args.random_seed)
 device = torch.device(f"cuda:{args.cuda}" if torch.cuda.is_available() else "cpu")
 
-
 ############################################
-# Evaluation Function
+# Evaluation Function for Genre Model
 ############################################
-
 def evaluate(model, diff, dataset_split, device):
     eval_data = pd.read_csv(os.path.join(MERGED_DATA_DIR, dataset_split))
     batch_size = args.batch_size
@@ -100,7 +98,8 @@ def evaluate(model, diff, dataset_split, device):
     ndcg_purchase = np.zeros(len(topk))
     losses = []
     genre_seq = eval_data['genre_seq'].apply(lambda x: list(map(int, eval(x)))).tolist()
-    genre_len = (eval_data['genre_len'].values if 'genre_len' in eval_data.columns else np.array([len(eval(x)) for x in eval_data['genre_seq'].tolist()]))
+    genre_len = (eval_data['genre_len'].values if 'genre_len' in eval_data.columns
+                 else np.array([len(eval(x)) for x in eval_data['genre_seq'].tolist()]))
     genre_target = eval_data['genre_target'].values
     for i in range(0, len(genre_seq), batch_size):
         seq_batch = torch.LongTensor(genre_seq[i:i + batch_size]).to(device)
@@ -128,15 +127,12 @@ def evaluate(model, diff, dataset_split, device):
     return {'loss': avg_loss, 'HR5': hr_list[0], 'NDCG5': ndcg_list[0],
             'HR10': hr_list[1], 'NDCG10': ndcg_list[1]}
 
-
 ############################################
-# Training Function for One Fold (No Validation)
+# Training Function for One Fold (Original Genre Model)
 ############################################
-
 def train_fold(fold):
     print(f"\n========== Fold {fold} ==========")
     fold_metrics = FoldMetrics(fold)
-    # Removed validation data; only train and test are used.
     train_csv = f"train_fold{fold}.df"
     test_csv = f"test_fold{fold}.df"
     train_df = pd.read_csv(os.path.join(MERGED_DATA_DIR, train_csv))
@@ -172,10 +168,7 @@ def train_fold(fold):
         optimizer = Lamb(model.parameters(), lr=args.lr, eps=2e-5, weight_decay=args.l2_decay)
     else:
         optimizer = optim.AdamW(model.parameters(), lr=args.lr, eps=2e-5, weight_decay=args.l2_decay)
-
     scheduler = lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.5)
-
-    epoch_train_losses = []
     for epoch in range(args.epoch):
         start_time = Time.time()
         model.train()
@@ -195,18 +188,14 @@ def train_fold(fold):
             optimizer.step()
             epoch_losses.append(loss.item())
         avg_epoch_loss = np.mean(epoch_losses)
-        epoch_train_losses.append(avg_epoch_loss)
         fold_metrics.add_train_loss(epoch + 1, avg_epoch_loss)
         if args.report_epoch:
-            print(
-                f"Fold {fold} Epoch {epoch + 1:03d}; Train loss: {avg_epoch_loss:.4f}; Time: {Time.strftime('%H:%M:%S', Time.gmtime(Time.time() - start_time))}")
-        # Evaluate on test data every 10 epochs
+            print(f"Fold {fold} Epoch {epoch + 1:03d}; Train loss: {avg_epoch_loss:.4f}; Time: {Time.strftime('%H:%M:%S', Time.gmtime(Time.time() - start_time))}")
         if (epoch + 1) % 10 == 0:
             model.eval()
             with torch.no_grad():
                 print(f"Fold {fold}: Evaluation at Epoch {epoch + 1}")
-                # Optionally, you can evaluate on train data as well if desired:
-                test_met = evaluate(model, diff, test_csv, device)
+                test_met = evaluate(model, diff, f"test_fold{fold}.df", device)
             fold_metrics.add_test_metrics(epoch + 1, test_met)
             scheduler.step()
     os.makedirs("./models", exist_ok=True)
@@ -214,7 +203,85 @@ def train_fold(fold):
     torch.save(diff, f"./models/genre_diff_fold{fold}.pth")
     return fold_metrics
 
+############################################
+# New Training Function for Experimental Folds (p1 and p2) with Specified Sequence Length
+############################################
+def train_experiment_genre_with_length(exp, seq_length):
+    """
+    Trains the genre model using experimental folds.
+    'exp' should be either "p1" or "p2". This function loads files
+    "train_fold{exp}.df" and "test_fold{exp}.df" and builds the model using the provided
+    sequence length (i.e. training sequence length, without target).
+    """
+    print(f"\n========== Experiment {exp} ==========")
+    fold_metrics = FoldMetrics(exp)
+    train_csv = f"train_fold{exp}.df"
+    test_csv = f"test_fold{exp}.df"
+    train_df = pd.read_csv(os.path.join(MERGED_DATA_DIR, train_csv))
+    test_df = pd.read_csv(os.path.join(MERGED_DATA_DIR, test_csv))
+    train_dataset = GenreDataset(train_df)
+    test_dataset = GenreDataset(test_df)
+    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
+    # Determine genre vocabulary size from statics if available.
+    statics_path = os.path.join(MERGED_DATA_DIR, "statics.csv")
+    if os.path.exists(statics_path):
+        statics_df = pd.read_csv(statics_path)
+        statics = dict(zip(statics_df['statistic'], statics_df['value']))
+        genre_vocab_size = int(statics.get("num_genres", 18))
+    else:
+        genre_vocab_size = 18
+    # Use the provided seq_length to build the model.
+    model = Tenc(args.hidden_factor, genre_vocab_size, seq_length, args.dropout_rate, args.diffuser_type, device)
+    diff = diffusion(args.timesteps, args.beta_start, args.beta_end, args.w)
+    model.to(device)
+    if args.optimizer == 'nadam':
+        optimizer = optim.NAdam(model.parameters(), lr=args.lr, eps=2e-5, weight_decay=args.l2_decay)
+    elif args.optimizer == 'adamw':
+        optimizer = optim.AdamW(model.parameters(), lr=args.lr, eps=2e-5, weight_decay=args.l2_decay)
+    elif args.optimizer == 'adabelief':
+        optimizer = AdaBelief(model.parameters(), lr=args.lr, eps=2e-5, weight_decay=args.l2_decay)
+    elif args.optimizer == 'lamb':
+        optimizer = Lamb(model.parameters(), lr=args.lr, eps=2e-5, weight_decay=args.l2_decay)
+    else:
+        optimizer = optim.AdamW(model.parameters(), lr=args.lr, eps=2e-5, weight_decay=args.l2_decay)
+    scheduler = lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.5)
+    for epoch in range(args.epoch):
+        start_time = Time.time()
+        model.train()
+        epoch_losses = []
+        for batch_data in train_loader:
+            genre_seq_batch, genre_len_batch, genre_target_batch = batch_data
+            genre_seq_batch = genre_seq_batch.to(device)
+            genre_len_batch = genre_len_batch.to(device)
+            genre_target_batch = genre_target_batch.to(device)
+            optimizer.zero_grad()
+            x_start = model.cacu_x(genre_target_batch)
+            n = torch.randint(0, args.timesteps, (genre_seq_batch.shape[0],), device=device).long()
+            h = model.cacu_h(genre_seq_batch, genre_len_batch, args.p)
+            loss1, predicted_x = diff.p_losses(model, x_start, h, n, loss_type='l2')
+            loss = loss1
+            loss.backward()
+            optimizer.step()
+            epoch_losses.append(loss.item())
+        avg_epoch_loss = np.mean(epoch_losses)
+        fold_metrics.add_train_loss(epoch + 1, avg_epoch_loss)
+        if args.report_epoch:
+            print(f"Experiment {exp} Epoch {epoch + 1:03d}; Train loss: {avg_epoch_loss:.4f}; Time: {Time.strftime('%H:%M:%S', Time.gmtime(Time.time() - start_time))}")
+        if (epoch + 1) % 10 == 0:
+            model.eval()
+            with torch.no_grad():
+                print(f"Experiment {exp}: Evaluation at Epoch {epoch + 1}")
+                test_metrics = evaluate(model, diff, test_csv, device)
+            fold_metrics.add_test_metrics(epoch + 1, test_metrics)
+            scheduler.step()
+    os.makedirs("./models", exist_ok=True)
+    torch.save(model.state_dict(), f"./models/genre_tenc_{exp}.pth")
+    torch.save(diff, f"./models/genre_diff_{exp}.pth")
+    return fold_metrics
 
+############################################
+# Main Function
+############################################
 def main():
     NUM_FOLDS = 10
     if args.tune:
@@ -278,7 +345,7 @@ def main():
         print("Best candidates saved to ./category/best_candidates.json")
 
     else:
-        # --------------------- Full 10-Fold CV Mode ---------------------
+        # ----- Full 10-Fold CV Mode (Original Genre Model) -----
         args.lr = 0.01
         args.optimizer = "nadam"
         args.timesteps = 200
@@ -289,7 +356,6 @@ def main():
             print("Results for Fold", fold)
             print(fm)
             os.makedirs("./category", exist_ok=True)
-           
         avg_metrics = AverageMetrics()
         for fm in fold_metrics_list:
             avg_metrics.add_fold_metrics(fm)
@@ -299,13 +365,11 @@ def main():
         with open("category/average_metrics.txt", "w") as f:
             f.write(str(avg_metrics))
         print("Full average metrics saved to category/average_metrics.txt")
-
         loss_recorder = LossRecorder(save_dir="category")
         for fm in fold_metrics_list:
             sorted_train = [loss for (ep, loss) in sorted(fm.train_losses, key=lambda x: x[0])]
             sorted_test = [fm.test_metrics[ep]['loss'] for ep in sorted(fm.test_metrics.keys())]
             loss_recorder.add_fold(fm.fold_number, sorted_train, sorted_test)
-
         loss_recorder.save_to_file("category/loss_data.json")
         avg_train, avg_test = loss_recorder.compute_average_losses()
         epochs_train = sorted(avg_train.keys())
@@ -315,6 +379,25 @@ def main():
         for fm in fold_metrics_list:
             metrics_recorder.add_fold(fm)
         metrics_recorder.save_to_file("category/average_test_metrics.txt")
+    
+    # ----- New: Run Experimental Folds for Genre Model using extra length argument -----
+    # If the extra argument --exp_length is provided, use that; otherwise, use defaults:
+    # For p1, default sequence length = 3; for p2, default sequence length = 10.
+    if args.exp_length is not None:
+        p1_length = args.exp_length if args.exp_length > 0 else 3
+        p2_length = args.exp_length if args.exp_length > 0 else 10
+    else:
+        p1_length = 3
+        p2_length = 10
+
+    print("\n========== Running Experimental Folds for Genre Model ==========")
+    exp_metrics_p1 = train_experiment_genre_with_length("p1", p1_length)
+    exp_metrics_p2 = train_experiment_genre_with_length("p2", p2_length)
+    with open("category/genre_exp_p1_metrics.txt", "w") as f:
+        f.write(str(exp_metrics_p1))
+    with open("category/genre_exp_p2_metrics.txt", "w") as f:
+        f.write(str(exp_metrics_p2))
+    print("Experimental fold metrics saved to category/genre_exp_p1_metrics.txt and category/genre_exp_p2_metrics.txt")
 
 
 if __name__ == '__main__':

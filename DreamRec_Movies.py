@@ -35,7 +35,7 @@ genre_movie_mapping = None
 ############################################
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Run Item Prediction with Diffusion + Focal Loss using 10-Fold CV on merged data."
+        description="Run Movie Prediction with Diffusion + Focal Loss using 10-Fold CV on merged data."
     )
     parser.add_argument('--tune', action='store_true', default=False, help='Enable tuning.')
     parser.add_argument('--no-tune', action='store_false', dest='tune', help='Disable tuning.')
@@ -49,19 +49,21 @@ def parse_args():
     parser.add_argument('--lr', type=float, default=0.01, help='Learning rate.')
     parser.add_argument('--l2_decay', type=float, default=1e-2, help='L2 loss regularization coefficient.')
     parser.add_argument('--cuda', type=int, default=0, help='CUDA device id.')
-    parser.add_argument('--dropout_rate', type=float, default=1e-4, help='Dropout rate.')
-    parser.add_argument('--eps', type=float, default=1e-8, help='eps')
+    parser.add_argument('--dropout_rate', type=float, default=5e-5, help='Dropout rate.')
+    parser.add_argument('--eps', type=float, default=1e-1, help='eps')
     parser.add_argument('--w', type=float, default=2.0, help='Weight used in x_start update inside sampler.')
     parser.add_argument('--p', type=float, default=0.2, help='Probability used in cacu_h for random dropout.')
     parser.add_argument('--report_epoch', type=bool, default=True, help='Whether to report metrics each epoch.')
     parser.add_argument('--diffuser_type', type=str, default='mlp1', help='Type of diffuser network: [mlp1, mlp2].')
-    parser.add_argument('--optimizer', type=str, default='adamp', help='Optimizer type: [adam, adamw, adagrad, rmsprop, lamb, adamp, radam, adabelief, nadam].')
+    parser.add_argument('--optimizer', type=str, default='radam',
+                        help='Optimizer type: [adam, adamw, adagrad, rmsprop, lamb, adamp, radam, adabelief, nadam].')
     parser.add_argument('--beta_sche', nargs='?', default='linear', help='Beta schedule: [linear, exp, cosine, sqrt].')
-    parser.add_argument('--scheduler', type=str, default='reduce_on_plateau', help='Scheduler type: [reduce_on_plateau, cosine, step].')
+    parser.add_argument('--scheduler', type=str, default='step', help='Scheduler type: [reduce_on_plateau, cosine, step].')
     parser.add_argument('--descri', type=str, default='', help='Description of the run.')
-    parser.add_argument('--scheduler_factor', type=float, default=0.5, help='Factor for ReduceLROnPlateau scheduler.')
-    parser.add_argument('--scheduler_eps', type=float, default=1e-16, help='Eps for ReduceLROnPlateau scheduler.')
-    
+    parser.add_argument('--scheduler_factor', type=float, default=0.3, help='Factor for ReduceLROnPlateau scheduler.')
+    parser.add_argument('--scheduler_eps', type=float, default=1e-4, help='Eps for ReduceLROnPlateau scheduler.')
+    # New argument: exp_length to override training sequence length (without target) for experimental folds.
+    parser.add_argument('--exp_length', type=int, default=None, help='Training sequence length (without target) for experimental runs.')
     return parser.parse_args()
 
 args = parse_args()
@@ -77,7 +79,7 @@ setup_seed(args.random_seed)
 device = torch.device(f"cuda:{args.cuda}" if torch.cuda.is_available() else "cpu")
 
 ############################################
-# Dataset Definition
+# Dataset Definition for Movie Model
 ############################################
 class MovieDataset(Dataset):
     def __init__(self, dataframe):
@@ -101,7 +103,6 @@ class MovieDataset(Dataset):
         target = torch.tensor(self.targets[idx], dtype=torch.long)
         # Remove the target item from the input sequence if present.
         seq = seq[seq != target]
-        # Update length based on filtered sequence.
         length = torch.tensor(len(seq), dtype=torch.long)
         if self.genre_seq is not None and self.genre_targets is not None:
             genre_seq = torch.tensor(eval(self.genre_seq[idx]), dtype=torch.long)
@@ -109,11 +110,51 @@ class MovieDataset(Dataset):
             return seq, length, target, genre_seq, genre_target
         else:
             return seq, length, target
+def movie_collate_fn(batch, fixed_length):
+    # Each item in batch is a tuple: (seq, length, target, genre_seq, genre_target)
+    seqs, lengths, targets, genre_seqs, genre_targets = zip(*batch)
+    
+    padded_seqs = []
+    for i, s in enumerate(seqs):
+        if s.numel() == 0:  # if the sequence is empty
+            padded = torch.zeros(fixed_length, dtype=s.dtype)
+        elif s.size(0) < fixed_length:
+            pad_size = fixed_length - s.size(0)
+            padded = torch.cat([s, torch.full((pad_size,), s[-1], dtype=s.dtype)])
+        else:
+            padded = s[:fixed_length]
+        if padded.size(0) != fixed_length:
+            print(f"Warning: Sample {i} padded sequence length is {padded.size(0)} (expected {fixed_length}). Original length was {s.size(0)}.")
+        padded_seqs.append(padded)
+    padded_seqs = torch.stack(padded_seqs)
+    
+    new_lengths = torch.tensor([min(l.item(), fixed_length) for l in lengths])
+    targets = torch.stack(targets)
+    
+    if genre_seqs[0] is not None:
+        padded_genre_seqs = []
+        for i, s in enumerate(genre_seqs):
+            if s.numel() == 0:
+                padded = torch.zeros(fixed_length, dtype=s.dtype)
+            elif s.size(0) < fixed_length:
+                pad_size = fixed_length - s.size(0)
+                padded = torch.cat([s, torch.full((pad_size,), s[-1], dtype=s.dtype)])
+            else:
+                padded = s[:fixed_length]
+            if padded.size(0) != fixed_length:
+                print(f"Warning: Sample {i} padded genre sequence length is {padded.size(0)} (expected {fixed_length}). Original length was {s.size(0)}.")
+            padded_genre_seqs.append(padded)
+        padded_genre_seqs = torch.stack(padded_genre_seqs)
+        genre_targets = torch.stack(genre_targets)
+    else:
+        padded_genre_seqs = None
+        genre_targets = None
+
+    return padded_seqs, new_lengths, targets, padded_genre_seqs, genre_targets
 
 ############################################
 # Loss Function: FocalLoss
 ############################################
-
 class FocalLoss(nn.Module):
     def __init__(self, alpha=1, gamma=2):
         super(FocalLoss, self).__init__()
@@ -127,7 +168,7 @@ class FocalLoss(nn.Module):
         return focal_loss.mean()
 
 ############################################
-# Evaluation Function (with Genre Integration)
+# Evaluation Function (with Genre Integration) for Movie Model
 ############################################
 def evaluate(model, genre_model, genre_diff, split_csv, diff, device):
     eval_data = pd.read_csv(os.path.join(MERGED_DATA_DIR, split_csv))
@@ -137,15 +178,12 @@ def evaluate(model, genre_model, genre_diff, split_csv, diff, device):
     hit_purchase = np.zeros(len(topk))
     ndcg_purchase = np.zeros(len(topk))
     losses = []
-
-    # Prepare lists from CSV columns
     movie_seq = eval_data['movie_seq'].apply(lambda x: list(map(int, eval(x)))).tolist()
     movie_len = (eval_data['movie_len'].values if 'movie_len' in eval_data.columns
                  else np.array([len(eval(x)) for x in eval_data['movie_seq'].tolist()]))
     movie_target = eval_data['movie_target'].values
     genre_seq = eval_data['genre_seq'].apply(lambda x: list(map(int, eval(x)))).tolist()
     genre_target = eval_data['genre_target'].values
-
     for i in range(0, len(movie_seq), batch_size):
         seq_batch = torch.LongTensor(movie_seq[i:i + batch_size]).to(device)
         len_seq_batch = torch.LongTensor(movie_len[i:i + batch_size]).to(device)
@@ -161,9 +199,7 @@ def evaluate(model, genre_model, genre_diff, split_csv, diff, device):
         _, genre_predicted_x = genre_diff.p_losses(genre_model, genre_x_start, genre_h, n_g, loss_type='l2')
         loss1, predicted_x = diff.p_losses(model, x_start, h, n, genres_embd=genre_predicted_x, loss_type='l2')
         predicted_items = model.decoder(predicted_x)
-
         focal_loss = FocalLoss(alpha=0.08, gamma=8)
-
         loss2 = focal_loss(predicted_items, target_batch)
         loss = loss2
         losses.append(loss.item())
@@ -172,7 +208,6 @@ def evaluate(model, genre_model, genre_diff, split_csv, diff, device):
         topK = topK.cpu().detach().numpy()
         calculate_hit(target_batch, topK, topk, hit_purchase, ndcg_purchase)
         total_samples += len(target_batch)
-
     avg_loss = np.mean(losses) if losses else 0.0
     hr_list = hit_purchase / total_samples
     ndcg_list = ndcg_purchase / total_samples
@@ -186,11 +221,10 @@ def evaluate(model, genre_model, genre_diff, split_csv, diff, device):
             'HR10': hr_list[1], 'NDCG10': ndcg_list[1]}
 
 ############################################
-# Training Function for One Fold (with Genre Integration; No Validation)
+# Original Training Function for One Fold (Movie Model)
 ############################################
 def train_fold(fold):
-    global movie_genre_mapping
-    global genre_movie_mapping
+    global movie_genre_mapping, genre_movie_mapping
     print(f"\n========== Fold {fold} ==========")
     fold_metrics = FoldMetrics(fold)
     train_csv = f"train_fold{fold}.df"
@@ -223,8 +257,6 @@ def train_fold(fold):
     genre_model.to(device)
     if args.optimizer == 'adamp':
         optimizer = AdamP(model.parameters(), lr=args.lr, betas=(0.9, 0.999), weight_decay=args.l2_decay)
-    elif args.optimizer == 'adagrad':
-        optimizer = optim.Adagrad(model.parameters(), lr=args.lr, eps=args.eps, weight_decay=args.l2_decay)
     elif args.optimizer == 'radam':
         optimizer = RAdam(model.parameters(), lr=args.lr, weight_decay=args.l2_decay)
     elif args.optimizer == 'lamb':
@@ -233,8 +265,7 @@ def train_fold(fold):
         optimizer = AdaBelief(model.parameters(), lr=args.lr, eps=args.eps, weight_decay=args.l2_decay)
     else:
         optimizer = optim.AdamW(model.parameters(), lr=args.lr, eps=args.eps, weight_decay=args.l2_decay)
-
-    # Scheduler selection based on candidate
+        
     if args.scheduler == 'reduce_on_plateau':
         scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=args.scheduler_factor, eps=args.scheduler_eps)
     elif args.scheduler == 'cosine':
@@ -243,7 +274,6 @@ def train_fold(fold):
         scheduler = lr_scheduler.StepLR(optimizer, step_size=10, gamma=args.scheduler_factor)
     else:
         scheduler = None
-
     for epoch in range(args.epoch):
         start_time = Time.time()
         model.train()
@@ -265,12 +295,10 @@ def train_fold(fold):
             loss1, predicted_x = diff.p_losses(model, x_start, h, n, genres_embd=genre_predicted_x, loss_type='l2')
             predicted_items = model.decoder(predicted_x)
             focal_loss = FocalLoss(alpha=0.08, gamma=8)
-
             loss2 = focal_loss(predicted_items, target_batch)
             loss = loss2
             loss.backward()
             optimizer.step()
-        
         fold_metrics.add_train_loss(epoch + 1, loss.item())
         if args.report_epoch:
             print(f"Fold {fold} Epoch {epoch + 1:03d}; Train loss: {loss.item():.4f}; Time: {Time.strftime('%H:%M:%S', Time.gmtime(Time.time() - start_time))}")
@@ -295,13 +323,129 @@ def train_fold(fold):
     return fold_metrics
 
 ############################################
+# New Training Function for Experimental Folds (p1 and p2) for Movie Model
+############################################
+def train_experiment_movie_with_length(exp, seq_length):
+    """
+    Trains the movie model using experimental folds.
+    'exp' should be either "p1" or "p2". It loads files named "train_fold{exp}.df" and "test_fold{exp}.df"
+    and builds the model using the provided training sequence length (without target).
+    Additionally, if exp is "p1", it loads the pretrained genre model weights from "models/genre_tenc_p1.pth".
+    """
+    print(f"\n========== Experiment {exp} ==========")
+    fold_metrics = FoldMetrics(exp)
+    train_csv = f"train_fold{exp}.df"
+    test_csv = f"test_fold{exp}.df"
+    train_df = pd.read_csv(os.path.join(MERGED_DATA_DIR, train_csv))
+    test_df = pd.read_csv(os.path.join(MERGED_DATA_DIR, test_csv))
+    train_dataset = MovieDataset(train_df)
+    test_dataset = MovieDataset(test_df)
+    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True,
+                          collate_fn=lambda batch: movie_collate_fn(batch, fixed_length=seq_length))
+    test_loader = DataLoader(MovieDataset(test_df), batch_size=args.batch_size, shuffle=False,
+                         collate_fn=lambda batch: movie_collate_fn(batch, fixed_length=seq_length))
+
+    # Fixed movie vocabulary size.
+    movie_vocab_size_dynamic = 3883
+    # Get genre vocabulary size from statics if available.
+    statics_file = os.path.join(MERGED_DATA_DIR, "statics.csv")
+    if os.path.exists(statics_file):
+        statics_df = pd.read_csv(statics_file)
+        statics = dict(zip(statics_df["statistic"], statics_df["value"]))
+        genre_vocab_size_dynamic = int(statics.get("num_genres", 18))
+    else:
+        genre_vocab_size_dynamic = 18
+    # Build the movie model with the provided seq_length.
+    model = MovieTenc(args.hidden_factor, movie_vocab_size_dynamic, seq_length, args.dropout_rate, args.diffuser_type, device=device).to(device)
+    diff = MovieDiffusion(args.timesteps, args.beta_start, args.beta_end, args.w)
+    # Build the auxiliary genre model with the same seq_length.
+    genre_model = Tenc(args.hidden_factor, genre_vocab_size_dynamic, seq_length, args.dropout_rate, args.diffuser_type, device)
+    genre_diff = diffusion(100, args.beta_start, args.beta_end, args.w)
+    # For p1 experiment, load the pre-trained genre model weights.
+    if exp == "p1":
+        genre_model, genre_diff = load_genres_predictor(genre_model, 'models/genre_tenc_p1.pth', 'models/genre_diff_p1.pth' )
+        for param in genre_model.parameters():
+            param.requires_grad = False
+    else:
+        genre_model, genre_diff = load_genres_predictor(genre_model, 'models/genre_tenc_p2.pth', 'models/genre_diff_p2.pth' )
+        for param in genre_model.parameters():
+            param.requires_grad = False
+    model.to(device)
+    genre_model.to(device)
+    if args.optimizer == 'adamp':
+        optimizer = AdamP(model.parameters(), lr=args.lr, betas=(0.9, 0.999), weight_decay=args.l2_decay)
+    elif args.optimizer == 'radam':
+        optimizer = RAdam(model.parameters(), lr=args.lr, weight_decay=args.l2_decay)
+    elif args.optimizer == 'lamb':
+        optimizer = Lamb(model.parameters(), lr=args.lr, eps=args.eps, weight_decay=args.l2_decay)
+    elif args.optimizer == 'adabelief':
+        optimizer = AdaBelief(model.parameters(), lr=args.lr, eps=args.eps, weight_decay=args.l2_decay)
+    else:
+        optimizer = optim.AdamW(model.parameters(), lr=args.lr, eps=args.eps, weight_decay=args.l2_decay)
+        
+        
+    if args.scheduler == 'reduce_on_plateau':
+        scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=args.scheduler_factor, eps=args.scheduler_eps)
+    elif args.scheduler == 'cosine':
+        scheduler = lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epoch, eta_min=1e-5)
+    elif args.scheduler == 'step':
+        scheduler = lr_scheduler.StepLR(optimizer, step_size=10, gamma=args.scheduler_factor)
+    else:
+        scheduler = None
+    for epoch in range(args.epoch):
+        start_time = Time.time()
+        model.train()
+        for batch_data in train_loader:
+            seq_batch, len_seq_batch, target_batch, genre_seq_batch, genre_target_batch = batch_data
+            seq_batch = seq_batch.to(device)
+            len_seq_batch = len_seq_batch.to(device)
+            target_batch = target_batch.to(device)
+            genre_seq_batch = genre_seq_batch.to(device)
+            genre_target_batch = genre_target_batch.to(device)
+            optimizer.zero_grad()
+            x_start = model.cacu_x(target_batch)
+            h = model.cacu_h(seq_batch, len_seq_batch, args.p)
+            n = torch.randint(0, args.timesteps, (seq_batch.shape[0],), device=device).long()
+            n_g = torch.randint(0, genre_diff.timesteps, (seq_batch.shape[0],), device=device).long()
+            genre_x_start = genre_model.cacu_x(genre_target_batch)
+            genre_h = genre_model.cacu_h(genre_seq_batch, len_seq_batch, args.p)
+            _, genre_predicted_x = genre_diff.p_losses(genre_model, genre_x_start, genre_h, n_g, loss_type='l2')
+            loss1, predicted_x = diff.p_losses(model, x_start, h, n, genres_embd=genre_predicted_x, loss_type='l2')
+            predicted_items = model.decoder(predicted_x)
+            focal_loss = FocalLoss(alpha=0.08, gamma=8)
+            loss2 = focal_loss(predicted_items, target_batch)
+            loss = loss2
+            loss.backward()
+            optimizer.step()
+        fold_metrics.add_train_loss(epoch + 1, loss.item())
+        if args.report_epoch:
+            print(f"Experiment {exp} Epoch {epoch + 1:03d}; Train loss: {loss.item():.4f}; Time: {Time.strftime('%H:%M:%S', Time.gmtime(Time.time() - start_time))}")
+        if (epoch + 1) % 10 == 0:
+            model.eval()
+            with torch.no_grad():
+                print(f"Experiment {exp}: Evaluation at Epoch {epoch + 1}")
+                test_metrics = evaluate(model, genre_model, genre_diff, test_csv, diff, device)
+            fold_metrics.add_test_metrics(epoch + 1, test_metrics)
+            if args.scheduler == 'reduce_on_plateau':
+                scheduler.step(test_metrics['loss'])
+            elif scheduler is not None:
+                scheduler.step()
+    with torch.no_grad():
+        print(f"Experiment {exp}: Final Test Phase")
+        final_test = evaluate(model, genre_model, genre_diff, test_csv, diff, device)
+        print(f"Experiment {exp}: Final Test Loss: {final_test['loss']:.4f}, HR@5: {final_test['HR5']:.4f}")
+    fold_metrics.add_test_metrics(args.epoch, final_test)
+    os.makedirs("./models", exist_ok=True)
+    torch.save(model.state_dict(), f"./models/movie_tenc_{exp}.pth")
+    torch.save(diff, f"./models/movie_diff_{exp}.pth")
+    return fold_metrics
+
+############################################
 # Main Function
 ############################################
-
 def main():
     NUM_FOLDS = 10
-    global movie_genre_mapping
-    global genre_movie_mapping
+    global movie_genre_mapping, genre_movie_mapping
     mapping_csv = os.path.join(MERGED_DATA_DIR, "movie_to_genre_mapping.csv")
     genre_mapping_json = os.path.join(MERGED_DATA_DIR, "genre_movie_mapping.json")
     if os.path.exists(mapping_csv):
@@ -363,7 +507,7 @@ def main():
         args.optimizer = best_optimizer
         tuning_optimizer_recorder.save_to_file("./item/tuning_optimizer.json")
 
-        # 3. Tune Dropout Rate
+        #3. Tune Dropout Rate
         dropout_candidates = [1e-4, 5e-4, 1e-5, 5e-5]
         tuning_dropout_recorder = LossTuningRecorder("dropout_rate", candidates=dropout_candidates, save_dir="item")
         for candidate in tqdm(dropout_candidates, desc="Tuning dropout_rate based on loss"):
@@ -439,7 +583,7 @@ def main():
         tuning_scheduler_recorder.save_to_file("./item/tuning_scheduler.json")
 
         #8. Tune ReduceLROnPlateau Scheduler Parameters (if applicable)
-        if args.scheduler == 'reduce_on_plateau':
+        if args.scheduler == 'reduce_on_plateau' or args.scheduler == 'step':
             scheduler_factor_candidates = [0.1, 0.3,  0.5, 0.7, 0.9]
             tuning_scheduler_factor_recorder = LossTuningRecorder("scheduler_factor", candidates=scheduler_factor_candidates, save_dir="item")
             for candidate in tqdm(scheduler_factor_candidates, desc="Tuning scheduler factor based on loss"):
@@ -476,14 +620,15 @@ def main():
             "eps": best_eps,
             "timesteps": best_timesteps,
             "scheduler": best_scheduler,
-            "scheduler_factor": args.scheduler_factor if args.scheduler == 'reduce_on_plateau' else None,
-            "scheduler_eps": args.scheduler_eps if args.scheduler == 'reduce_on_plateau' else None
+            "scheduler_factor": args.scheduler_factor ,
+            "scheduler_eps": args.scheduler_eps 
         }
         with open("./item/best_candidates.json", "w") as f:
             json.dump(best_candidates, f, indent=2)
         print("Best candidates saved to ./item/best_candidates.json")
     else:
-        tuning_fold = 1
+        # ----- Full 10-Fold CV Mode (Original Movie Model) -----
+    
         fold_metrics_list = []
         for fold in range(1, NUM_FOLDS + 1):
             fm = train_fold(fold)
@@ -491,8 +636,6 @@ def main():
             print("Results for Fold", fold)
             print(fm)
             os.makedirs("./item", exist_ok=True)
-            with open(f"./item/fold{fold}_metrics.txt", "w") as f:
-                f.write(str(fm))
         avg_metrics = AverageMetrics()
         for fm in fold_metrics_list:
             avg_metrics.add_fold_metrics(fm)
@@ -516,6 +659,30 @@ def main():
         for fm in fold_metrics_list:
             metrics_recorder.add_fold(fm)
         metrics_recorder.save_to_file("item/average_test_metrics.txt")
+        # ----- New: Run Experimental Folds for Movie Model -----
+        # Use extra argument --exp_length if provided; otherwise, use defaults:
+        # For p1, default training sequence length = 3; for p2, default training sequence length = 10.
+        if args.exp_length is not None:
+            movie_exp_p1_length = args.exp_length if args.exp_length > 0 else 3
+            movie_exp_p2_length = args.exp_length if args.exp_length > 0 else 10
+        else:
+            movie_exp_p1_length = 3
+            movie_exp_p2_length = 10
+
+        print("\n========== Running Experimental Folds for Movie Model ==========")
+        exp_metrics_movie_p1 = train_experiment_movie_with_length("p1", movie_exp_p1_length)
+        with open("item/movie_exp_p1_metrics.txt", "w") as f:
+            f.write(str(exp_metrics_movie_p1))
+            
+            
+        exp_metrics_movie_p2 = train_experiment_movie_with_length("p2", movie_exp_p2_length)
+        
+        with open("item/movie_exp_p2_metrics.txt", "w") as f:
+            f.write(str(exp_metrics_movie_p2))
+        print("Experimental movie fold metrics saved to item/movie_exp_p1_metrics.txt and item/movie_exp_p2_metrics.txt")
+
+    
+    
 
 if __name__ == '__main__':
     main()

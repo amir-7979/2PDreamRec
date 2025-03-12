@@ -489,9 +489,13 @@ class MovieTenc(Tenc):
             )
 
             self.decoder = nn.Sequential(
-                nn.Linear(self.hidden_size, self.hidden_size * 4),
+                nn.Linear(self.hidden_size, self.hidden_size * 2),
                 nn.ReLU(),
-                nn.Linear(self.hidden_size * 4, self.hidden_size),
+                nn.Linear(self.hidden_size * 2, self.hidden_size * 4),
+                nn.ReLU(),
+                nn.Linear(self.hidden_size * 4, self.hidden_size * 2),
+                nn.ReLU(),
+                nn.Linear(self.hidden_size * 2, self.hidden_size),
                 nn.ReLU(),
                 nn.Linear(self.hidden_size, self.item_num),
                 # nn.Softmax(dim=-1),

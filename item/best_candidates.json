@@ -1,4 +1,11 @@
 {
-  "scheduler_factor": 0.5,
-  "scheduler_eps": 1e-16
+  "lr": 0.01,
+  "optimizer": "radam",
+  "dropout_rate": 5e-05,
+  "l2_decay": 0.01,
+  "eps": 0.1,
+  "timesteps": 200,
+  "scheduler": "reduce_on_plateau",
+  "scheduler_factor": 0.3,
+  "scheduler_eps": 0.0001
 }
