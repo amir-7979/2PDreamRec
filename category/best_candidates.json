@@ -1,0 +1,5 @@
+{
+  "lr": 0.05,
+  "optimizer": "nadam",
+  "timesteps": 800
+}
