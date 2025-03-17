@@ -8,9 +8,31 @@ from utility import extract_axis_1, calculate_hit
 def load_genres_predictor(tenc, 
                           tenc_path='models/genre_tenc_fold1.pth', 
                           diff_path='models/genre_diff_fold1.pth'):
-   
-    tenc.load_state_dict(torch.load(tenc_path))
-    diff = torch.load(diff_path)
+    """
+    Loads a pretrained checkpoint for the genre predictor model.
+    For keys where the shape does not match the current model (e.g., due to using mlp2),
+    those parameters are skipped.
+    """
+    # Load the checkpoint state dict.
+    checkpoint = torch.load(tenc_path, map_location='cpu', weights_only=True)
+    model_dict = tenc.state_dict()
+
+    # Filter out keys with mismatched shapes.
+    filtered_checkpoint = {}
+    for key, value in checkpoint.items():
+        if key in model_dict:
+            if value.size() == model_dict[key].size():
+                filtered_checkpoint[key] = value
+            else:
+                print(f"Skipping parameter '{key}': checkpoint shape {value.size()} vs. model shape {model_dict[key].size()}")
+        else:
+            print(f"Parameter '{key}' not found in the current model.")
+    
+    # Load the filtered state dict.
+    tenc.load_state_dict(filtered_checkpoint, strict=False)
+    
+    # Load the diffusion checkpoint normally.
+    diff = torch.load(diff_path, map_location='cpu', weights_only=True)
     return tenc, diff
 
 ############################################
@@ -90,11 +112,8 @@ class diffusion():
             noise = torch.randn_like(x_start)
             # noise = torch.randn_like(x_start) / 100
         sqrt_alphas_cumprod_t = extract(self.sqrt_alphas_cumprod, t, x_start.shape)
-        sqrt_one_minus_alphas_cumprod_t = extract(
-            self.sqrt_one_minus_alphas_cumprod, t, x_start.shape
-        )
+        sqrt_one_minus_alphas_cumprod_t = extract(self.sqrt_one_minus_alphas_cumprod, t, x_start.shape)
         return sqrt_alphas_cumprod_t * x_start + sqrt_one_minus_alphas_cumprod_t * noise
-
     def p_losses(self, denoise_model, x_start, h, t, noise=None, loss_type="l2"):
         #
         if noise is None:
@@ -154,45 +173,6 @@ class diffusion():
         return x
 
 
-class MovieDiffusion(diffusion):
-    def __init__(self, timesteps, beta_start, beta_end, w):
-        super().__init__(timesteps, beta_start, beta_end, w)
-
-    def p_losses(self, denoise_model, x_start, h, t, genres_embd, noise=None, loss_type="l2"):
-        if noise is None:
-            noise = torch.randn_like(x_start)
-        x_noisy = self.q_sample(x_start, t, noise)
-        predicted_x = denoise_model(x_noisy, h, t, genres_embd)
-        if loss_type == 'l1':
-            loss = F.l1_loss(x_start, predicted_x)
-        elif loss_type == 'l2':
-            loss = F.mse_loss(x_start, predicted_x)
-        elif loss_type == "huber":
-            loss = F.smooth_l1_loss(x_start, predicted_x)
-        else:
-            raise NotImplementedError("Unknown loss_type")
-        return loss, predicted_x
-
-    @torch.no_grad()
-    def p_sample(self, model_forward, model_forward_uncon, x, h, t, t_index, genres_embd):
-        x_start = (1 + self.w) * model_forward(x, h, t, genres_embd) - self.w * model_forward_uncon(x, t, genres_embd)
-        x_t = x
-        model_mean = extract(self.posterior_mean_coef1, t, x_t.shape) * x_start + \
-                     extract(self.posterior_mean_coef2, t, x_t.shape) * x_t
-        if t_index == 0:
-            return model_mean
-        else:
-            posterior_variance_t = extract(self.posterior_variance, t, x.shape)
-            noise = torch.randn_like(x)
-            return model_mean + torch.sqrt(posterior_variance_t) * noise
-
-    @torch.no_grad()
-    def sample(self, model_forward, model_forward_uncon, h, genres_embd):
-        x = torch.randn_like(h)
-        for n in reversed(range(self.timesteps)):
-            x = self.p_sample(model_forward, model_forward_uncon, x, h,
-                              torch.full((h.shape[0],), n, device=h.device, dtype=torch.long), n, genres_embd)
-        return x
 
 
 ############################################
@@ -354,6 +334,7 @@ class Tenc(nn.Module):
 
         x = diff.sample(self.forward, self.forward_uncon, h)
 
+
         test_item_emb = self.item_embeddings.weight
         scores = torch.matmul(x, test_item_emb.transpose(0, 1))
 
@@ -404,6 +385,45 @@ def filter_movie_scores(movie_scores, top_genres, genre_movie_mapping, target_ba
 
 
 
+class MovieDiffusion(diffusion):
+    def __init__(self, timesteps, beta_start, beta_end, w):
+        super().__init__(timesteps, beta_start, beta_end, w)
+
+    def p_losses(self, denoise_model, x_start, h, t, genres_embd, noise=None, loss_type="l2"):
+        if noise is None:
+            noise = torch.randn_like(x_start)
+        x_noisy = self.q_sample(x_start, t, noise)
+        predicted_x = denoise_model(x_noisy, h, t, genres_embd)
+        if loss_type == 'l1':
+            loss = F.l1_loss(x_start, predicted_x)
+        elif loss_type == 'l2':
+            loss = F.mse_loss(x_start, predicted_x)
+        elif loss_type == "huber":
+            loss = F.smooth_l1_loss(x_start, predicted_x)
+        else:
+            raise NotImplementedError("Unknown loss_type")
+        return loss, predicted_x
+
+    @torch.no_grad()
+    def p_sample(self, model_forward, model_forward_uncon, x, h, t, t_index, genres_embd):
+        x_start = (1 + self.w) * model_forward(x, h, t, genres_embd) - self.w * model_forward_uncon(x, t, genres_embd)
+        x_t = x
+        model_mean = extract(self.posterior_mean_coef1, t, x_t.shape) * x_start + \
+                     extract(self.posterior_mean_coef2, t, x_t.shape) * x_t
+        if t_index == 0:
+            return model_mean
+        else:
+            posterior_variance_t = extract(self.posterior_variance, t, x.shape)
+            noise = torch.randn_like(x)
+            return model_mean + torch.sqrt(posterior_variance_t) * noise
+
+    @torch.no_grad()
+    def sample(self, model_forward, model_forward_uncon, h, genres_embd):
+        x = torch.randn_like(h)
+        for n in reversed(range(self.timesteps)):
+            x = self.p_sample(model_forward, model_forward_uncon, x, h,
+                              torch.full((h.shape[0],), n, device=h.device, dtype=torch.long), n, genres_embd)
+        return x
 
 class MovieTenc(Tenc):
     def __init__(self, hidden_size, item_num, state_size, dropout, diffuser_type, device, num_heads=1):

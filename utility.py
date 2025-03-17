@@ -83,14 +83,18 @@ def normalize(inputs,
     return outputs
 
 def calculate_hit(target_batch, topK, topk, hit_purchase, ndcg_purchase):
+    target_batch = target_batch.cpu().numpy()  # Convert to NumPy once
     for idx, k in enumerate(topk):
-        for j in range(len(target_batch)):
-            if target_batch[j].item() in topK[j, :k]:
-                hit_purchase[idx] += 1
-                rank = np.where(topK[j, :k] == target_batch[j].item())[0][0] + 1
-                ndcg_purchase[idx] += 1 / np.log2(rank + 1)
-
-
+        topk_preds = topK[:, :k]  # Shape: (batch_size, k)
+        hits = np.any(topk_preds == target_batch[:, None], axis=1)  # Vectorized hit check
+        hit_purchase[idx] += hits.sum()
+        
+        # Compute NDCG for hits
+        for j in np.where(hits)[0]:
+            rank = np.where(topk_preds[j] == target_batch[j])[0][0] + 1
+            dcg = 1 / np.log2(rank + 1)
+            idcg = 1 / np.log2(2)
+            ndcg_purchase[idx] += dcg / idcg
 # class Memory():
 #     def __init__(self):
 #         self.buffer = deque()
