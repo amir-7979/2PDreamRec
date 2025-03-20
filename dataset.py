@@ -89,7 +89,7 @@ def build_genre_movie_mapping(movies_path, output_path):
         json.dump(genre_movie_mapping, f, indent=4)
 
 def filter_users_original(data):
-    data_filtered = data[data['rating'] >= 3.5]
+    data_filtered = data[data['rating'] >= 4]
     user_counts = data_filtered['userId'].value_counts()
     valid_users = user_counts[(user_counts >= 5) & (user_counts <= 4000)].index
     return data_filtered[data_filtered['userId'].isin(valid_users)]
