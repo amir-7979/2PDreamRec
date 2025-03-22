@@ -54,20 +54,22 @@ def parse_args():
     parser.add_argument('--epoch', type=int, default=100, help='Number of epochs per fold.')
     parser.add_argument('--random_seed', type=int, default=100, help='Random seed.')
     parser.add_argument('--batch_size', type=int, default=512, help='Batch size.')
+    parser.add_argument('--lr', type=float, default=0.001, help='Learning rate.')
+    parser.add_argument('--optimizer', type=str, default='nadam', help='Optimizer type: [adam, adamw, adagrad, rmsprop].')
+    parser.add_argument('--timesteps', type=int, default=400, help='Timesteps for diffusion.')
+    parser.add_argument('--dropout_rate', type=float, default=0.1, help='Dropout rate.')
+    parser.add_argument('--eps', type=float, default=1e-4, help='L2 loss regularization coefficient.')
+    parser.add_argument('--l2_decay', type=float, default=1e-16, help='L2 loss regularization coefficient.')
+    parser.add_argument('--factor', type=float, default=0.8, help='L2 loss regularization coefficient.')
+
     parser.add_argument('--hidden_factor', type=int, default=64, help='Embedding/hidden size.')
-    parser.add_argument('--timesteps', type=int, default=100, help='Timesteps for diffusion.')
     parser.add_argument('--beta_end', type=float, default=0.02, help='Beta end of diffusion.')
     parser.add_argument('--beta_start', type=float, default=0.0001, help='Beta start of diffusion.')
-    parser.add_argument('--lr', type=float, default=0.001, help='Learning rate.')
-    parser.add_argument('--l2_decay', type=float, default=1e-4, help='L2 loss regularization coefficient.')
     parser.add_argument('--cuda', type=int, default=0, help='CUDA device id.')
-    parser.add_argument('--dropout_rate', type=float, default=1e-4, help='Dropout rate.')
     parser.add_argument('--w', type=float, default=2.0, help='Weight used in x_start update inside sampler.')
     parser.add_argument('--p', type=float, default=0.1, help='Probability used in cacu_h for random dropout.')
     parser.add_argument('--report_epoch', type=bool, default=True, help='Whether to report metrics each epoch.')
     parser.add_argument('--diffuser_type', type=str, default='mlp1', help='Type of diffuser network: [mlp1, mlp2].')
-    parser.add_argument('--optimizer', type=str, default='adam',
-                        help='Optimizer type: [adam, adamw, adagrad, rmsprop].')
     parser.add_argument('--beta_sche', nargs='?', default='linear', help='Beta schedule: [linear, exp, cosine, sqrt].')
     parser.add_argument('--descri', type=str, default='', help='Description of the run.')
     # New argument: exp_length to override sequence length for experimental folds.
@@ -159,16 +161,16 @@ def train_fold(fold):
     diff = diffusion(args.timesteps, args.beta_start, args.beta_end, args.w)
     model.to(device)
     if args.optimizer == 'nadam':
-        optimizer = optim.NAdam(model.parameters(), lr=args.lr, eps=3e-5, weight_decay=args.l2_decay)
+        optimizer = optim.NAdam(model.parameters(), lr=args.lr, eps=args.eps ,weight_decay=args.l2_decay)
     elif args.optimizer == 'adamw':
-        optimizer = optim.AdamW(model.parameters(), lr=args.lr, eps=3e-5, weight_decay=args.l2_decay)
+        optimizer = optim.AdamW(model.parameters(), lr=args.lr, eps=args.eps, weight_decay=args.l2_decay)
     elif args.optimizer == 'adabelief':
-        optimizer = AdaBelief(model.parameters(), lr=args.lr, eps=3e-5, weight_decay=args.l2_decay)
+        optimizer = AdaBelief(model.parameters(), lr=args.lr, eps=args.eps, weight_decay=args.l2_decay)
     elif args.optimizer == 'lamb':
-        optimizer = Lamb(model.parameters(), lr=args.lr, eps=3e-5, weight_decay=args.l2_decay)
+        optimizer = Lamb(model.parameters(), lr=args.lr, eps=args.eps, weight_decay=args.l2_decay)
     else:
-        optimizer = optim.AdamW(model.parameters(), lr=args.lr, eps=3e-5, weight_decay=args.l2_decay)
-    scheduler = lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.5)
+        optimizer = optim.AdamW(model.parameters(), lr=args.lr, eps=args.eps, weight_decay=args.l2_decay)
+    scheduler = lr_scheduler.StepLR(optimizer, step_size=5, gamma=args.factor)
     for epoch in range(args.epoch):
         start_time = Time.time()
         model.train()
@@ -364,9 +366,7 @@ def main():
     NUM_FOLDS = 10
     if args.tune:
         tuning_fold = 1
-        args.lr = 0.01
-        args.optimizer = "nadam"
-        args.timesteps = 200
+        
         lr_candidates = [0.05, 0.01, 0.005, 0.001]
         optimizer_candidates = ['lamb', 'adamw', 'adabelief', 'nadam']
         timesteps_candidates = [200, 400, 600, 800]
@@ -421,10 +421,7 @@ def main():
             json.dump(best_candidates, f, indent=2)
         print("Best candidates saved to ./category/best_candidates.json")
     else:
-        # ----- Full 10-Fold CV Mode (Original Genre Model) -----
-        args.lr = 0.01
-        args.optimizer = "nadam"
-        args.timesteps = 200
+        
         fold_metrics_list = []
         for fold in range(1, NUM_FOLDS + 1):
             fm = train_fold(fold)
@@ -458,30 +455,30 @@ def main():
     
     # ----- Run Experimental Folds for Genre Model using extra length argument -----
     # For p1 and p2, default sequence lengths are provided.
-    if args.exp_length is not None:
-        p1_length = args.exp_length if args.exp_length > 0 else 3
-        p2_length = args.exp_length if args.exp_length > 0 else 10
-        p3_length = args.exp_length if args.exp_length > 0 else 20
-    else:
-        p1_length = 3
-        p2_length = 10
-        p3_length = 20
+    # if args.exp_length is not None:
+    #     p1_length = args.exp_length if args.exp_length > 0 else 3
+    #     p2_length = args.exp_length if args.exp_length > 0 else 10
+    #     p3_length = args.exp_length if args.exp_length > 0 else 20
+    # else:
+    #     p1_length = 3
+    #     p2_length = 10
+    #     p3_length = 20
 
-    print("\n========== Running Experimental Folds for Genre Model ==========")
-    exp_metrics_p1 = train_experiment_genre_with_length("p1", p1_length)
-    exp_metrics_p2 = train_experiment_genre_with_length("p2", p2_length)
-    with open("category/genre_exp_p1_metrics.txt", "w") as f:
-        f.write(str(exp_metrics_p1))
-    with open("category/genre_exp_p2_metrics.txt", "w") as f:
-        f.write(str(exp_metrics_p2))
-    print("Experimental fold metrics saved to category/genre_exp_p1_metrics.txt and category/genre_exp_p2_metrics.txt")
+    # print("\n========== Running Experimental Folds for Genre Model ==========")
+    # exp_metrics_p1 = train_experiment_genre_with_length("p1", p1_length)
+    # exp_metrics_p2 = train_experiment_genre_with_length("p2", p2_length)
+    # with open("category/genre_exp_p1_metrics.txt", "w") as f:
+    #     f.write(str(exp_metrics_p1))
+    # with open("category/genre_exp_p2_metrics.txt", "w") as f:
+    #     f.write(str(exp_metrics_p2))
+    # print("Experimental fold metrics saved to category/genre_exp_p1_metrics.txt and category/genre_exp_p2_metrics.txt")
     
-    # ----- Run Experimental Fold p3 for Genre Model -----
-    print("\n========== Running Experimental Fold p3 for Genre Model ==========")
-    exp_metrics_p3 = train_experiment_genre_p3(p3_length)
-    with open("category/genre_exp_p3_metrics.txt", "w") as f:
-        f.write(str(exp_metrics_p3))
-    print("Experimental fold metrics saved to category/genre_exp_p3_metrics.txt")
+    # # ----- Run Experimental Fold p3 for Genre Model -----
+    # print("\n========== Running Experimental Fold p3 for Genre Model ==========")
+    # exp_metrics_p3 = train_experiment_genre_p3(p3_length)
+    # with open("category/genre_exp_p3_metrics.txt", "w") as f:
+    #     f.write(str(exp_metrics_p3))
+    # print("Experimental fold metrics saved to category/genre_exp_p3_metrics.txt")
 
 if __name__ == '__main__':
     main()
