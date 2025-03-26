@@ -1,11 +1,5 @@
 {
-  "lr": 0.005,
-  "optimizer": "lamb",
-  "timesteps": 800,
-  "dropout_rate": 1e-06,
-  "l2_decay": 0.01,
-  "eps": 0.0001,
-  "scheduler": "step",
-  "scheduler_factor": 0.3,
-  "scheduler_eps": 1e-16
+  "lr": 0.01,
+  "optimizer": "nadam",
+  "timesteps": 250
 }

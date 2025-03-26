@@ -6,8 +6,8 @@ import math
 from utility import extract_axis_1, calculate_hit
 
 def load_genres_predictor(tenc, 
-                          tenc_path='models/genre_tenc_fold1.pth', 
-                          diff_path='models/genre_diff_fold1.pth'):
+                          tenc_path='models/genre_tenc_fold10.pth', 
+                          diff_path='models/genre_diff_fold10.pth'):
     """
     Loads a pretrained checkpoint for the genre predictor model.
     For keys where the shape does not match the current model (e.g., due to using mlp2),

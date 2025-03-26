@@ -43,25 +43,28 @@ def parse_args():
     parser.add_argument('--random_seed', type=int, default=100, help='Random seed.')
     parser.add_argument('--batch_size', type=int, default=128, help='Batch size.')
     parser.add_argument('--hidden_factor', type=int, default=64, help='Embedding/hidden size.')
-    parser.add_argument('--timesteps', type=int, default=200, help='Timesteps for diffusion.')
+    parser.add_argument('--lr', type=float, default=0.01, help='Learning rate.')
+    parser.add_argument('--optimizer', type=str, default='adamp',
+                        help='Optimizer type: [adam, adamw, adagrad, rmsprop, lamb, adamp, radam, adabelief, nadam].')
+    parser.add_argument('--timesteps', type=int, default=100, help='Timesteps for diffusion.')
+    parser.add_argument('--dropout_rate', type=float, default=1e-8, help='Dropout rate.')
+    parser.add_argument('--eps', type=float, default=1e-4, help='eps')
+    parser.add_argument('--l2_decay', type=float, default=1e-2, help='L2 loss regularization coefficient.')
+    parser.add_argument('--scheduler_factor', type=float, default=0.5, help='Factor for ReduceLROnPlateau scheduler.')
+    parser.add_argument('--scheduler', type=str, default='step', help='Scheduler type: [reduce_on_plateau, cosine, step].')
+    parser.add_argument('--scheduler_eps', type=float, default=1e-8, help='Eps for ReduceLROnPlateau scheduler.')
+
+
     parser.add_argument('--beta_end', type=float, default=0.02, help='Beta end of diffusion.')
     parser.add_argument('--beta_start', type=float, default=0.0001, help='Beta start of diffusion.')
-    parser.add_argument('--lr', type=float, default=0.01, help='Learning rate.')
-    parser.add_argument('--l2_decay', type=float, default=1e-2, help='L2 loss regularization coefficient.')
     parser.add_argument('--cuda', type=int, default=0, help='CUDA device id.')
-    parser.add_argument('--dropout_rate', type=float, default=5e-5, help='Dropout rate.')
-    parser.add_argument('--eps', type=float, default=1e-1, help='eps')
     parser.add_argument('--w', type=float, default=2.0, help='Weight used in x_start update inside sampler.')
     parser.add_argument('--p', type=float, default=0.2, help='Probability used in cacu_h for random dropout.')
     parser.add_argument('--report_epoch', type=bool, default=True, help='Whether to report metrics each epoch.')
     parser.add_argument('--diffuser_type', type=str, default='mlp1', help='Type of diffuser network: [mlp1, mlp2].')
-    parser.add_argument('--optimizer', type=str, default='radam',
-                        help='Optimizer type: [adam, adamw, adagrad, rmsprop, lamb, adamp, radam, adabelief, nadam].')
+
     parser.add_argument('--beta_sche', nargs='?', default='linear', help='Beta schedule: [linear, exp, cosine, sqrt].')
-    parser.add_argument('--scheduler', type=str, default='step', help='Scheduler type: [reduce_on_plateau, cosine, step].')
     parser.add_argument('--descri', type=str, default='', help='Description of the run.')
-    parser.add_argument('--scheduler_factor', type=float, default=0.3, help='Factor for ReduceLROnPlateau scheduler.')
-    parser.add_argument('--scheduler_eps', type=float, default=1e-4, help='Eps for ReduceLROnPlateau scheduler.')
     # New argument: exp_length to override training sequence length (without target) for experimental folds.
     parser.add_argument('--exp_length', type=int, default=None, help='Training sequence length (without target) for experimental runs.')
     return parser.parse_args()
@@ -235,7 +238,8 @@ def train_fold(fold):
     test_df = pd.read_csv(os.path.join(MERGED_DATA_DIR, test_csv))
     train_dataset = MovieDataset(train_df)
     test_dataset = MovieDataset(test_df)
-    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
+    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True,
+                          collate_fn=lambda batch: movie_collate_fn(batch, fixed_length=10))
     statics_file = os.path.join(MERGED_DATA_DIR, "statics.csv")
     if os.path.exists(statics_file):
         statics_df = pd.read_csv(statics_file)
@@ -583,7 +587,7 @@ def main():
     if args.tune:
         tuning_fold = 1
         # Tuning steps (lr, optimizer, dropout_rate, l2_decay, eps, timesteps, scheduler, etc.)
-        lr_candidates = [0.05, 0.01, 0.005, 0.001]
+        lr_candidates = [0.1, 0.05, 0.01, 0.005, 0.001]
         tuning_lr_recorder = LossTuningRecorder("lr", candidates=lr_candidates, save_dir="item")
         for candidate in tqdm(lr_candidates, desc="Tuning lr based on loss"):
             args.lr = candidate
@@ -611,7 +615,23 @@ def main():
         args.optimizer = best_optimizer
         tuning_optimizer_recorder.save_to_file("./item/tuning_optimizer.json")
 
-        dropout_candidates = [1e-4, 5e-4, 1e-5, 5e-5]
+
+        timesteps_candidates = [50, 100, 150, 200, 250, 300, 350, 400]
+        tuning_timesteps_recorder = LossTuningRecorder("timesteps", candidates=timesteps_candidates, save_dir="item")
+        for candidate in tqdm(timesteps_candidates, desc="Tuning timesteps based on loss"):
+            args.timesteps = candidate
+            fm = train_fold(tuning_fold)
+            for epoch, metrics in fm.test_metrics.items():
+                tuning_timesteps_recorder.record(candidate, epoch, metrics['loss'])
+            final_epoch = max(fm.test_metrics.keys())
+            print(f"[timesteps candidate {candidate}] Fold {tuning_fold}: Loss = {fm.test_metrics[final_epoch]['loss']:.4f}")
+        best_timesteps = tuning_timesteps_recorder.find_best_loss(eval_epoch=100)
+        print("\nBest timesteps based on loss:", best_timesteps)
+        args.timesteps = best_timesteps
+        tuning_timesteps_recorder.save_to_file("./item/tuning_timesteps.json")
+
+
+        dropout_candidates = [1e-1, 1e-2, 1e-3, 1e-4, 5e-4, 1e-5, 5e-5, 1e-6, 1e-7, 1e-8]
         tuning_dropout_recorder = LossTuningRecorder("dropout_rate", candidates=dropout_candidates, save_dir="item")
         for candidate in tqdm(dropout_candidates, desc="Tuning dropout_rate based on loss"):
             args.dropout_rate = candidate
@@ -625,7 +645,7 @@ def main():
         args.dropout_rate = best_dropout
         tuning_dropout_recorder.save_to_file("./item/tuning_dropout.json")
 
-        l2_candidates = [1e-1, 1e-2, 1e-4, 1e-8, 1e-16]
+        l2_candidates = [1e-1, 1e-2, 1e-3, 1e-4, 5e-4, 1e-5, 5e-5, 1e-6, 1e-7, 1e-8]
         tuning_l2_recorder = LossTuningRecorder("l2_decay", candidates=l2_candidates, save_dir="item")
         for candidate in tqdm(l2_candidates, desc="Tuning l2_decay based on loss"):
             args.l2_decay = candidate
@@ -639,7 +659,7 @@ def main():
         args.l2_decay = best_l2
         tuning_l2_recorder.save_to_file("./item/tuning_l2.json")
 
-        eps_candidates = [1e-1, 1e-2, 1e-4, 1e-8, 1e-16]
+        eps_candidates = [1e-1, 1e-2, 1e-3, 1e-4, 5e-4, 1e-5, 5e-5, 1e-6, 1e-7, 1e-8]
         tuning_eps_recorder = LossTuningRecorder("eps", candidates=eps_candidates, save_dir="item")
         for candidate in tqdm(eps_candidates, desc="Tuning eps based on loss"):
             args.eps = candidate
@@ -653,19 +673,6 @@ def main():
         args.eps = best_eps
         tuning_eps_recorder.save_to_file("./item/tuning_eps.json")
 
-        timesteps_candidates = [200, 400, 600, 800]
-        tuning_timesteps_recorder = LossTuningRecorder("timesteps", candidates=timesteps_candidates, save_dir="item")
-        for candidate in tqdm(timesteps_candidates, desc="Tuning timesteps based on loss"):
-            args.timesteps = candidate
-            fm = train_fold(tuning_fold)
-            for epoch, metrics in fm.test_metrics.items():
-                tuning_timesteps_recorder.record(candidate, epoch, metrics['loss'])
-            final_epoch = max(fm.test_metrics.keys())
-            print(f"[timesteps candidate {candidate}] Fold {tuning_fold}: Loss = {fm.test_metrics[final_epoch]['loss']:.4f}")
-        best_timesteps = tuning_timesteps_recorder.find_best_loss(eval_epoch=100)
-        print("\nBest timesteps based on loss:", best_timesteps)
-        args.timesteps = best_timesteps
-        tuning_timesteps_recorder.save_to_file("./item/tuning_timesteps.json")
 
         scheduler_candidates = ['reduce_on_plateau', 'cosine', 'step']
         tuning_scheduler_recorder = LossTuningRecorder("scheduler", candidates=scheduler_candidates, save_dir="item")
@@ -713,10 +720,11 @@ def main():
         best_candidates = {
             "lr": best_lr,
             "optimizer": best_optimizer,
+            "timesteps": best_timesteps,
+
             "dropout_rate": best_dropout,
             "l2_decay": best_l2,
             "eps": best_eps,
-            "timesteps": best_timesteps,
             "scheduler": best_scheduler,
             "scheduler_factor": args.scheduler_factor,
             "scheduler_eps": args.scheduler_eps 
@@ -726,45 +734,45 @@ def main():
         print("Best candidates saved to ./item/best_candidates.json")
     else:
         fold_metrics_list = []
-        # for fold in range(1, NUM_FOLDS + 1):
-        #     fm = train_fold(fold)
-        #     fold_metrics_list.append(fm)
-        #     print("Results for Fold", fold)
-        #     print(fm)
-        #     os.makedirs("./item", exist_ok=True)
-        # avg_metrics = AverageMetrics()
-        # for fm in fold_metrics_list:
-        #     avg_metrics.add_fold_metrics(fm)
-        # avg_metrics.compute_averages()
-        # print("\n========== Average Metrics Across Folds ==========")
-        # print(avg_metrics)
-        # with open("item/average_metrics.txt", "w") as f:
-        #     f.write(str(avg_metrics))
-        # print("Full average metrics saved to item/average_metrics.txt")
-        # loss_recorder = LossRecorder(save_dir="item")
-        # for fm in fold_metrics_list:
-        #     sorted_train = [loss for (ep, loss) in sorted(fm.train_losses, key=lambda x: x[0])]
-        #     sorted_test = [fm.test_metrics[ep]['loss'] for ep in sorted(fm.test_metrics.keys())]
-        #     loss_recorder.add_fold(fm.fold_number, sorted_train, sorted_test)
-        # loss_recorder.save_to_file("item/loss_data.json")
-        # avg_train, avg_test = loss_recorder.compute_average_losses()
-        # epochs_train = sorted(avg_train.keys())
-        # np.savetxt("item/avg_train_loss.txt", np.array([avg_train[e] for e in epochs_train]))
-        # print("Average training losses saved to item/avg_train_loss.txt")
-        # metrics_recorder = MetricsRecorder(save_dir="item")
-        # for fm in fold_metrics_list:
-        #     metrics_recorder.add_fold(fm)
-        # metrics_recorder.save_to_file("item/average_test_metrics.txt")
+        for fold in range(1, NUM_FOLDS + 1):
+            fm = train_fold(fold)
+            fold_metrics_list.append(fm)
+            print("Results for Fold", fold)
+            print(fm)
+            os.makedirs("./item", exist_ok=True)
+        avg_metrics = AverageMetrics()
+        for fm in fold_metrics_list:
+            avg_metrics.add_fold_metrics(fm)
+        avg_metrics.compute_averages()
+        print("\n========== Average Metrics Across Folds ==========")
+        print(avg_metrics)
+        with open("item/average_metrics.txt", "w") as f:
+            f.write(str(avg_metrics))
+        print("Full average metrics saved to item/average_metrics.txt")
+        loss_recorder = LossRecorder(save_dir="item")
+        for fm in fold_metrics_list:
+            sorted_train = [loss for (ep, loss) in sorted(fm.train_losses, key=lambda x: x[0])]
+            sorted_test = [fm.test_metrics[ep]['loss'] for ep in sorted(fm.test_metrics.keys())]
+            loss_recorder.add_fold(fm.fold_number, sorted_train, sorted_test)
+        loss_recorder.save_to_file("item/loss_data.json")
+        avg_train, avg_test = loss_recorder.compute_average_losses()
+        epochs_train = sorted(avg_train.keys())
+        np.savetxt("item/avg_train_loss.txt", np.array([avg_train[e] for e in epochs_train]))
+        print("Average training losses saved to item/avg_train_loss.txt")
+        metrics_recorder = MetricsRecorder(save_dir="item")
+        for fm in fold_metrics_list:
+            metrics_recorder.add_fold(fm)
+        metrics_recorder.save_to_file("item/average_test_metrics.txt")
         
         # ----- New: Run Experimental Folds for Movie Model -----
-        if args.exp_length is not None:
-            movie_exp_p1_length = args.exp_length if args.exp_length > 0 else 3
-            movie_exp_p2_length = args.exp_length if args.exp_length > 0 else 10
-            movie_exp_p3_length = args.exp_length if args.exp_length > 0 else 20
-        else:
-            movie_exp_p1_length = 3
-            movie_exp_p2_length = 10
-            movie_exp_p3_length = 20
+        # if args.exp_length is not None:
+        #     movie_exp_p1_length = args.exp_length if args.exp_length > 0 else 3
+        #     movie_exp_p2_length = args.exp_length if args.exp_length > 0 else 10
+        #     movie_exp_p3_length = args.exp_length if args.exp_length > 0 else 20
+        # else:
+        #     movie_exp_p1_length = 3
+        #     movie_exp_p2_length = 10
+        #     movie_exp_p3_length = 20
 
         # print("\n========== Running Experimental Folds for Movie Model ==========")
         # exp_metrics_movie_p1 = train_experiment_movie_with_length("p1", movie_exp_p1_length)
@@ -775,11 +783,11 @@ def main():
         #     f.write(str(exp_metrics_movie_p2))
         # print("Experimental movie fold metrics saved to item/movie_exp_p1_metrics.txt and item/movie_exp_p2_metrics.txt")
         
-        print("\n========== Running Experimental Fold p3 for Movie Model ==========")
-        exp_metrics_movie_p3 = train_experiment_movie_p3(movie_exp_p3_length)
-        with open("item/movie_exp_p3_metrics.txt", "w") as f:
-            f.write(str(exp_metrics_movie_p3))
-        print("Experimental movie fold metrics saved to item/movie_exp_p3_metrics.txt")
+        # print("\n========== Running Experimental Fold p3 for Movie Model ==========")
+        # exp_metrics_movie_p3 = train_experiment_movie_p3(movie_exp_p3_length)
+        # with open("item/movie_exp_p3_metrics.txt", "w") as f:
+        #     f.write(str(exp_metrics_movie_p3))
+        # print("Experimental movie fold metrics saved to item/movie_exp_p3_metrics.txt")
 
 if __name__ == '__main__':
     main()
