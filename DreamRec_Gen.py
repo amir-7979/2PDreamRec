@@ -18,13 +18,13 @@ from recorders import LossRecorder, MetricsRecorder, TuningRecorder, FoldMetrics
 from adabelief_pytorch import AdaBelief
 from torch_optimizer import Lamb
 from torch.optim.lr_scheduler import ReduceLROnPlateau
-
 logging.getLogger().setLevel(logging.INFO)
 MERGED_DATA_DIR = "data"
 
 ############################################
 # Dataset Definition for Genre Model
 ############################################
+
 class GenreDataset(Dataset):
     def __init__(self, dataframe):
         self.genre_seq = dataframe['genre_seq'].tolist()
@@ -45,10 +45,9 @@ class GenreDataset(Dataset):
 ############################################
 # Argument Parsing and Setup
 ############################################
+
 def parse_args():
-    parser = argparse.ArgumentParser(
-        description="Run Genre Prediction with Diffusion + Cross-Entropy & Focal Loss using 10-Fold CV on merged data."
-    )
+    parser = argparse.ArgumentParser(description="Run Genre Prediction with Diffusion + Cross-Entropy & Focal Loss using 10-Fold CV on merged data.")
     parser.add_argument('--tune', action='store_true', default=False, help='Enable tuning.')
     parser.add_argument('--no-tune', action='store_false', dest='tune', help='Disable tuning.')
     parser.add_argument('--epoch', type=int, default=100, help='Number of epochs per fold.')
@@ -72,7 +71,6 @@ def parse_args():
     parser.add_argument('--diffuser_type', type=str, default='mlp1', help='Type of diffuser network: [mlp1, mlp2].')
     parser.add_argument('--beta_sche', nargs='?', default='linear', help='Beta schedule: [linear, exp, cosine, sqrt].')
     parser.add_argument('--descri', type=str, default='', help='Description of the run.')
-    # New argument: exp_length to override sequence length for experimental folds.
     parser.add_argument('--exp_length', type=int, default=None, help='Sequence length for experimental runs (training sequence length, i.e. without target).')
     return parser.parse_args()
 
@@ -91,6 +89,7 @@ device = torch.device(f"cuda:{args.cuda}" if torch.cuda.is_available() else "cpu
 ############################################
 # Evaluation Function for Genre Model
 ############################################
+
 def evaluate(model, diff, dataset_split, device):
     eval_data = pd.read_csv(os.path.join(MERGED_DATA_DIR, dataset_split))
     batch_size = args.batch_size
@@ -132,6 +131,7 @@ def evaluate(model, diff, dataset_split, device):
 ############################################
 # Training Function for One Fold (Original Genre Model)
 ############################################
+
 def train_fold(fold):
     print(f"\n========== Fold {fold} ==========")
     fold_metrics = FoldMetrics(fold)
@@ -209,13 +209,8 @@ def train_fold(fold):
 ############################################
 # New Training Function for Experimental Folds (p1 and p2)
 ############################################
+
 def train_experiment_genre_with_length(exp, seq_length):
-    """
-    Trains the genre model using experimental folds.
-    'exp' should be either "p1" or "p2". This function loads files
-    "train_fold{exp}.df" and "test_fold{exp}.df" and builds the model using the provided
-    sequence length (i.e. training sequence length, without target).
-    """
     print(f"\n========== Experiment {exp} ==========")
     fold_metrics = FoldMetrics(exp)
     train_csv = f"train_fold{exp}.df"
@@ -225,7 +220,6 @@ def train_experiment_genre_with_length(exp, seq_length):
     train_dataset = GenreDataset(train_df)
     test_dataset = GenreDataset(test_df)
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
-    # Determine genre vocabulary size from statics if available.
     statics_path = os.path.join(MERGED_DATA_DIR, "statics.csv")
     if os.path.exists(statics_path):
         statics_df = pd.read_csv(statics_path)
@@ -286,8 +280,8 @@ def train_experiment_genre_with_length(exp, seq_length):
 ############################################
 # New Training Function for Experimental Fold p3
 ############################################
+
 def train_experiment_genre_p3(seq_length):
-    
     print("\n========== Experiment p3 ==========")
     fold_metrics = FoldMetrics("p3")
     train_csv = "train_foldp3.df"
@@ -299,7 +293,6 @@ def train_experiment_genre_p3(seq_length):
     train_dataset = GenreDataset(train_df)
     valid_dataset = GenreDataset(valid_df)
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
-    # Determine genre vocabulary size from statics if available.
     statics_path = os.path.join(MERGED_DATA_DIR, "statics.csv")
     if os.path.exists(statics_path):
         statics_df = pd.read_csv(statics_path)
@@ -322,7 +315,6 @@ def train_experiment_genre_p3(seq_length):
         optimizer = optim.AdamW(model.parameters(), lr=args.lr, eps=2e-5, weight_decay=args.l2_decay)
     scheduler = lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.5)
     
-    # Training loop using training data; evaluation on validation set during training.
     for epoch in range(args.epoch):
         start_time = Time.time()
         model.train()
@@ -345,16 +337,13 @@ def train_experiment_genre_p3(seq_length):
         fold_metrics.add_train_loss(epoch + 1, avg_epoch_loss)
         if args.report_epoch:
             print(f"Experiment p3 Epoch {epoch + 1:03d}; Train loss: {avg_epoch_loss:.4f}; Time: {Time.strftime('%H:%M:%S', Time.gmtime(Time.time() - start_time))}")
-        # Evaluate on validation split every 10 epochs.
         if (epoch + 1) % 10 == 0:
             print(f"Experiment p3: Validation Evaluation at Epoch {epoch + 1}")
             _ = evaluate(model, diff, valid_csv, device)
             scheduler.step()
-    # Save the trained model
     os.makedirs("./models", exist_ok=True)
     torch.save(model.state_dict(), "./models/genre_tenc_p3.pth")
     torch.save(diff, "./models/genre_diff_p3.pth")
-    # Final evaluation on test split after training.
     print("Final Evaluation on p3 test set:")
     test_metrics = evaluate(model, diff, test_csv, device)
     fold_metrics.add_test_metrics(args.epoch, test_metrics)
@@ -368,15 +357,12 @@ def main():
     if args.tune:
         tuning_fold = 1
 
-        lr_candidates = [0.1, 0.05, 0.01, 0.005, 0.001]
+        lr_candidates = [0.05, 0.01, 0.005, 0.001]
         optimizer_candidates = ['nadam', 'lamb', 'adamw', 'adabelief']
-        timesteps_candidates =  [50, 100, 150, 200, 250]
-        dropout_candidates = [1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 5e-7, 1e-8, 1e-16]
-        l2_candidates = [1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 5e-7, 1e-8, 1e-16]
-        eps_candidates = [1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 5e-7, 1e-8, 1e-16]
-        scheduler_candidates = ['reduce_on_plateau', 'cosine', 'step']
-        scheduler_factor_candidates = [0.1, 0.3, 0.5, 0.7, 0.9]
-        scheduler_eps_candidates = [1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 5e-7, 1e-8, 1e-16]
+        timesteps_candidates =  [100, 150, 200, 250, 300]
+        dropout_candidates = [1e-1, 1e-2, 1e-3, 1e-4, 1e-5]
+        l2_candidates = [1e-1, 1e-2, 1e-3, 1e-4, 1e-5]
+        eps_candidates = [1e-1, 1e-2, 1e-3, 1e-4, 1e-5]
 
         # Create tuning recorders
         tuning_lr_recorder = TuningRecorder("lr", lr_candidates, save_dir="category")
@@ -385,10 +371,7 @@ def main():
         tuning_dropout_recorder = TuningRecorder("dropout_rate", dropout_candidates, save_dir="category")
         tuning_l2_recorder = TuningRecorder("l2_decay", l2_candidates, save_dir="category")
         tuning_eps_recorder = TuningRecorder("eps", eps_candidates, save_dir="category")
-        tuning_scheduler_recorder = TuningRecorder("scheduler", scheduler_candidates, save_dir="category")
-        tuning_scheduler_eps_recorder = TuningRecorder("scheduler_eps", scheduler_eps_candidates, save_dir="category")
-        tuning_scheduler_factor = TuningRecorder("scheduler_factor", scheduler_factor_candidates, save_dir="category")
-        # Tuning learning rate
+
         for candidate in tqdm(lr_candidates, desc="Tuning lr"):
             args.lr = candidate
             fm = train_fold(tuning_fold)
@@ -400,7 +383,6 @@ def main():
         print("\nBest learning rate found:", best_lr)
         args.lr = best_lr
 
-        # Tuning optimizer
         for candidate in tqdm(optimizer_candidates, desc="Tuning optimizer"):
             args.optimizer = candidate
             fm = train_fold(tuning_fold)
@@ -412,7 +394,6 @@ def main():
         print("\nBest optimizer found:", best_optimizer)
         args.optimizer = best_optimizer
 
-        # Tuning timesteps
         for candidate in tqdm(timesteps_candidates, desc="Tuning timesteps"):
             args.timesteps = candidate
             fm = train_fold(tuning_fold)
@@ -424,93 +405,46 @@ def main():
         print("\nBest timesteps found:", best_timesteps)
         args.timesteps = best_timesteps
 
-        # # Tuning dropout_rate
-        # for candidate in tqdm(dropout_candidates, desc="Tuning dropout_rate"):
-        #     args.dropout_rate = candidate
-        #     fm = train_fold(tuning_fold)
-        #     fold_hr10_list = [fm.test_metrics[epoch]['HR10'] for epoch in sorted(fm.test_metrics.keys())]
-        #     for i, hr in enumerate(fold_hr10_list):
-        #         tuning_dropout_recorder.record(candidate, (i + 1) * 10, hr)
-        #     print(f"[dropout_rate candidate {candidate}] Fold {tuning_fold}: HR@10 = {fold_hr10_list}")
-        # best_dropout = tuning_dropout_recorder.find_best()
-        # print("\nBest dropout_rate found:", best_dropout)
-        # args.dropout_rate = best_dropout
+        for candidate in tqdm(dropout_candidates, desc="Tuning dropout_rate"):
+            args.dropout_rate = candidate
+            fm = train_fold(tuning_fold)
+            fold_hr10_list = [fm.test_metrics[epoch]['HR10'] for epoch in sorted(fm.test_metrics.keys())]
+            for i, hr in enumerate(fold_hr10_list):
+                tuning_dropout_recorder.record(candidate, (i + 1) * 10, hr)
+            print(f"[dropout_rate candidate {candidate}] Fold {tuning_fold}: HR@10 = {fold_hr10_list}")
+        best_dropout = tuning_dropout_recorder.find_best()
+        print("\nBest dropout_rate found:", best_dropout)
+        args.dropout_rate = best_dropout
 
-        # # Tuning l2_decay
-        # for candidate in tqdm(l2_candidates, desc="Tuning l2_decay"):
-        #     args.l2_decay = candidate
-        #     fm = train_fold(tuning_fold)
-        #     fold_hr10_list = [fm.test_metrics[epoch]['HR10'] for epoch in sorted(fm.test_metrics.keys())]
-        #     for i, hr in enumerate(fold_hr10_list):
-        #         tuning_l2_recorder.record(candidate, (i + 1) * 10, hr)
-        #     print(f"[l2_decay candidate {candidate}] Fold {tuning_fold}: HR@10 = {fold_hr10_list}")
-        # best_l2 = tuning_l2_recorder.find_best()
-        # print("\nBest l2_decay found:", best_l2)
-        # args.l2_decay = best_l2
+        for candidate in tqdm(l2_candidates, desc="Tuning l2_decay"):
+            args.l2_decay = candidate
+            fm = train_fold(tuning_fold)
+            fold_hr10_list = [fm.test_metrics[epoch]['HR10'] for epoch in sorted(fm.test_metrics.keys())]
+            for i, hr in enumerate(fold_hr10_list):
+                tuning_l2_recorder.record(candidate, (i + 1) * 10, hr)
+            print(f"[l2_decay candidate {candidate}] Fold {tuning_fold}: HR@10 = {fold_hr10_list}")
+        best_l2 = tuning_l2_recorder.find_best()
+        print("\nBest l2_decay found:", best_l2)
+        args.l2_decay = best_l2
 
-        # # Tuning eps
-        # for candidate in tqdm(eps_candidates, desc="Tuning eps"):
-        #     args.eps = candidate
-        #     fm = train_fold(tuning_fold)
-        #     fold_hr10_list = [fm.test_metrics[epoch]['HR10'] for epoch in sorted(fm.test_metrics.keys())]
-        #     for i, hr in enumerate(fold_hr10_list):
-        #         tuning_eps_recorder.record(candidate, (i + 1) * 10, hr)
-        #     print(f"[eps candidate {candidate}] Fold {tuning_fold}: HR@10 = {fold_hr10_list}")
-        # best_eps = tuning_eps_recorder.find_best()
-        # print("\nBest eps found:", best_eps)
-        # args.eps = best_eps
-
-        # # Tuning scheduler
-        # for candidate in tqdm(scheduler_candidates, desc="Tuning scheduler"):
-        #     args.scheduler = candidate
-        #     fm = train_fold(tuning_fold)
-        #     fold_hr10_list = [fm.test_metrics[epoch]['HR10'] for epoch in sorted(fm.test_metrics.keys())]
-        #     for i, hr in enumerate(fold_hr10_list):
-        #         tuning_scheduler_recorder.record(candidate, (i + 1) * 10, hr)
-        #     print(f"[scheduler candidate {candidate}] Fold {tuning_fold}: HR@10 = {fold_hr10_list}")
-        # best_scheduler = tuning_scheduler_recorder.find_best()
-        # print("\nBest scheduler found:", best_scheduler)
-        # args.scheduler = best_scheduler
-
-        # # If scheduler is reduce_on_plateau or step, tune scheduler_factor and scheduler_eps
-        # if args.scheduler in ['reduce_on_plateau', 'step']:
-        #     tuning_scheduler_factor_recorder = TuningRecorder("scheduler_factor", scheduler_factor_candidates, save_dir="category")
-        #     for candidate in tqdm(scheduler_factor_candidates, desc="Tuning scheduler_factor"):
-        #         args.scheduler_factor = candidate
-        #         fm = train_fold(tuning_fold)
-        #         fold_hr10_list = [fm.test_metrics[epoch]['HR10'] for epoch in sorted(fm.test_metrics.keys())]
-        #         for i, hr in enumerate(fold_hr10_list):
-        #             tuning_scheduler_factor_recorder.record(candidate, (i + 1) * 10, hr)
-        #         print(f"[scheduler_factor candidate {candidate}] Fold {tuning_fold}: HR@10 = {fold_hr10_list}")
-        #     best_scheduler_factor = tuning_scheduler_factor_recorder.find_best()
-        #     print("\nBest scheduler_factor found:", best_scheduler_factor)
-        #     args.scheduler_factor = best_scheduler_factor
-        #     tuning_scheduler_factor_recorder.save_to_file("./category/tuning_scheduler_factor.json")
-            
-            
-        # for candidate in tqdm(scheduler_eps_candidates, desc="Tuning scheduler_eps"):
-        #     args.scheduler_eps = candidate
-        #     fm = train_fold(tuning_fold)
-        #     fold_hr10_list = [fm.test_metrics[epoch]['HR10'] for epoch in sorted(fm.test_metrics.keys())]
-        #     for i, hr in enumerate(fold_hr10_list):
-        #         tuning_scheduler_eps_recorder.record(candidate, (i + 1) * 10, hr)
-        #     print(f"[scheduler_eps candidate {candidate}] Fold {tuning_fold}: HR@10 = {fold_hr10_list}")
-        # best_scheduler_eps = tuning_scheduler_eps_recorder.find_best()
-        # print("\nBest scheduler_eps found:", best_scheduler_eps)
-        # args.scheduler_eps = best_scheduler_eps
-        # tuning_scheduler_eps_recorder.save_to_file("./category/tuning_scheduler_eps.json")
+        for candidate in tqdm(eps_candidates, desc="Tuning eps"):
+            args.eps = candidate
+            fm = train_fold(tuning_fold)
+            fold_hr10_list = [fm.test_metrics[epoch]['HR10'] for epoch in sorted(fm.test_metrics.keys())]
+            for i, hr in enumerate(fold_hr10_list):
+                tuning_eps_recorder.record(candidate, (i + 1) * 10, hr)
+            print(f"[eps candidate {candidate}] Fold {tuning_fold}: HR@10 = {fold_hr10_list}")
+        best_eps = tuning_eps_recorder.find_best()
+        print("\nBest eps found:", best_eps)
+        args.eps = best_eps
         
-        
-
-        # Save all best candidates
         os.makedirs("./category", exist_ok=True)
         tuning_lr_recorder.save_to_file("./category/tuning_lr.json")
         tuning_optimizer_recorder.save_to_file("./category/tuning_optimizer.json")
         tuning_timesteps_recorder.save_to_file("./category/tuning_timesteps.json")
-        # tuning_dropout_recorder.save_to_file("./category/tuning_dropout.json")
-        # tuning_l2_recorder.save_to_file("./category/tuning_l2.json")
-        # tuning_eps_recorder.save_to_file("./category/tuning_eps.json")
-        # tuning_scheduler_recorder.save_to_file("./category/tuning_scheduler.json")
+        tuning_dropout_recorder.save_to_file("./category/tuning_dropout.json")
+        tuning_l2_recorder.save_to_file("./category/tuning_l2.json")
+        tuning_eps_recorder.save_to_file("./category/tuning_eps.json")
 
         # Write fold metrics for tuning fold
         with open("./category/fold_metrics_tune.txt", "w") as f:
@@ -522,15 +456,11 @@ def main():
             "lr": best_lr,
             "optimizer": best_optimizer,
             "timesteps": best_timesteps,
-            # "dropout_rate": best_dropout,
-            # "l2_decay": best_l2,
-            # "eps": best_eps,
-            # "scheduler": best_scheduler,
+            "dropout_rate": best_dropout,
+            "l2_decay": best_l2,
+            "eps": best_eps
         }
-        # if args.scheduler in ['reduce_on_plateau', 'step']:
-        #     best_candidates["scheduler_factor"] = args.scheduler_factor
-        #     best_candidates["scheduler_eps"] = args.scheduler_eps
-
+        
         with open("./category/best_candidates.json", "w") as f:
             json.dump(best_candidates, f, indent=2)
         print("Best candidates saved to ./category/best_candidates.json")
@@ -568,32 +498,30 @@ def main():
             metrics_recorder.add_fold(fm)
         metrics_recorder.save_to_file("category/average_test_metrics.txt")
     
-    # ----- Run Experimental Folds for Genre Model using extra length argument -----
-    # For p1 and p2, default sequence lengths are provided.
-    # if args.exp_length is not None:
-    #     p1_length = args.exp_length if args.exp_length > 0 else 3
-    #     p2_length = args.exp_length if args.exp_length > 0 else 10
-    #     p3_length = args.exp_length if args.exp_length > 0 else 20
-    # else:
-    #     p1_length = 3
-    #     p2_length = 10
-    #     p3_length = 20
-
-    # print("\n========== Running Experimental Folds for Genre Model ==========")
-    # exp_metrics_p1 = train_experiment_genre_with_length("p1", p1_length)
-    # exp_metrics_p2 = train_experiment_genre_with_length("p2", p2_length)
-    # with open("category/genre_exp_p1_metrics.txt", "w") as f:
-    #     f.write(str(exp_metrics_p1))
-    # with open("category/genre_exp_p2_metrics.txt", "w") as f:
-    #     f.write(str(exp_metrics_p2))
-    # print("Experimental fold metrics saved to category/genre_exp_p1_metrics.txt and category/genre_exp_p2_metrics.txt")
     
-    # # ----- Run Experimental Fold p3 for Genre Model -----
-    # print("\n========== Running Experimental Fold p3 for Genre Model ==========")
-    # exp_metrics_p3 = train_experiment_genre_p3(p3_length)
-    # with open("category/genre_exp_p3_metrics.txt", "w") as f:
-    #     f.write(str(exp_metrics_p3))
-    # print("Experimental fold metrics saved to category/genre_exp_p3_metrics.txt")
+    if args.exp_length is not None:
+        p1_length = args.exp_length if args.exp_length > 0 else 3
+        p2_length = args.exp_length if args.exp_length > 0 else 10
+        p3_length = args.exp_length if args.exp_length > 0 else 20
+    else:
+        p1_length = 3
+        p2_length = 10
+        p3_length = 20
+
+    print("\n========== Running Experimental Folds for Genre Model ==========")
+    exp_metrics_p1 = train_experiment_genre_with_length("p1", p1_length)
+    exp_metrics_p2 = train_experiment_genre_with_length("p2", p2_length)
+    with open("category/genre_exp_p1_metrics.txt", "w") as f:
+        f.write(str(exp_metrics_p1))
+    with open("category/genre_exp_p2_metrics.txt", "w") as f:
+        f.write(str(exp_metrics_p2))
+    print("Experimental fold metrics saved to category/genre_exp_p1_metrics.txt and category/genre_exp_p2_metrics.txt")
+    
+    print("\n========== Running Experimental Fold p3 for Genre Model ==========")
+    exp_metrics_p3 = train_experiment_genre_p3(p3_length)
+    with open("category/genre_exp_p3_metrics.txt", "w") as f:
+        f.write(str(exp_metrics_p3))
+    print("Experimental fold metrics saved to category/genre_exp_p3_metrics.txt")
 
 if __name__ == '__main__':
     main()
