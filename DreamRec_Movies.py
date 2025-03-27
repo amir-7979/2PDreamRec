@@ -14,13 +14,10 @@ from tqdm import tqdm
 from adabelief_pytorch import AdaBelief
 from torch_optimizer import Lamb, AdamP, RAdam, Shampoo, DiffGrad
 from torch_optimizer import Ranger
-
 import random
 import logging
 import json
 from torch.optim.lr_scheduler import ReduceLROnPlateau
-
-# Import your modules.
 from Modules_ori import MovieTenc, MovieDiffusion, Tenc, diffusion, load_genres_predictor, get_top_genres, filter_movie_scores
 from utility import extract_axis_1, calculate_hit
 from recorders import LossTuningRecorder, MetricsRecorder, LossRecorder, FoldMetrics, AverageMetrics
@@ -34,9 +31,7 @@ genre_movie_mapping = None
 # Argument Parsing and Setup
 ############################################
 def parse_args():
-    parser = argparse.ArgumentParser(
-        description="Run Movie Prediction with Diffusion + Focal Loss using 10-Fold CV on merged data."
-    )
+    parser = argparse.ArgumentParser(description="Run Movie Prediction with Diffusion + Focal Loss using 10-Fold CV on merged data.")
     parser.add_argument('--tune', action='store_true', default=False, help='Enable tuning.')
     parser.add_argument('--no-tune', action='store_false', dest='tune', help='Disable tuning.')
     parser.add_argument('--epoch', type=int, default=100, help='Number of epochs per fold.')
@@ -44,16 +39,13 @@ def parse_args():
     parser.add_argument('--batch_size', type=int, default=128, help='Batch size.')
     parser.add_argument('--hidden_factor', type=int, default=64, help='Embedding/hidden size.')
     parser.add_argument('--lr', type=float, default=0.01, help='Learning rate.')
-    parser.add_argument('--optimizer', type=str, default='adamp',
-                        help='Optimizer type: [adam, adamw, adagrad, rmsprop, lamb, adamp, radam, adabelief, nadam].')
+    parser.add_argument('--optimizer', type=str, default='radam',help='Optimizer type: [adam, adamw, adagrad, rmsprop, lamb, adamp, radam, adabelief, nadam].')
     parser.add_argument('--timesteps', type=int, default=100, help='Timesteps for diffusion.')
     parser.add_argument('--dropout_rate', type=float, default=1e-8, help='Dropout rate.')
     parser.add_argument('--eps', type=float, default=1e-4, help='eps')
     parser.add_argument('--l2_decay', type=float, default=1e-2, help='L2 loss regularization coefficient.')
     parser.add_argument('--scheduler_factor', type=float, default=0.5, help='Factor for ReduceLROnPlateau scheduler.')
     parser.add_argument('--scheduler', type=str, default='step', help='Scheduler type: [reduce_on_plateau, cosine, step].')
-    parser.add_argument('--scheduler_eps', type=float, default=1e-8, help='Eps for ReduceLROnPlateau scheduler.')
-
 
     parser.add_argument('--beta_end', type=float, default=0.02, help='Beta end of diffusion.')
     parser.add_argument('--beta_start', type=float, default=0.0001, help='Beta start of diffusion.')
@@ -62,15 +54,12 @@ def parse_args():
     parser.add_argument('--p', type=float, default=0.2, help='Probability used in cacu_h for random dropout.')
     parser.add_argument('--report_epoch', type=bool, default=True, help='Whether to report metrics each epoch.')
     parser.add_argument('--diffuser_type', type=str, default='mlp1', help='Type of diffuser network: [mlp1, mlp2].')
-
     parser.add_argument('--beta_sche', nargs='?', default='linear', help='Beta schedule: [linear, exp, cosine, sqrt].')
     parser.add_argument('--descri', type=str, default='', help='Description of the run.')
-    # New argument: exp_length to override training sequence length (without target) for experimental folds.
     parser.add_argument('--exp_length', type=int, default=None, help='Training sequence length (without target) for experimental runs.')
     return parser.parse_args()
 
 args = parse_args()
-
 def setup_seed(seed):
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
@@ -84,6 +73,7 @@ device = torch.device(f"cuda:{args.cuda}" if torch.cuda.is_available() else "cpu
 ############################################
 # Dataset Definition for Movie Model
 ############################################
+
 class MovieDataset(Dataset):
     def __init__(self, dataframe):
         self.movie_seq = dataframe['movie_seq'].tolist()
@@ -104,7 +94,6 @@ class MovieDataset(Dataset):
     def __getitem__(self, idx):
         seq = torch.tensor(eval(self.movie_seq[idx]), dtype=torch.long)
         target = torch.tensor(self.targets[idx], dtype=torch.long)
-        # Remove the target item from the input sequence if present.
         seq = seq[seq != target]
         length = torch.tensor(len(seq), dtype=torch.long)
         if self.genre_seq is not None and self.genre_targets is not None:
@@ -115,9 +104,7 @@ class MovieDataset(Dataset):
             return seq, length, target
 
 def movie_collate_fn(batch, fixed_length):
-    # Each item in batch is a tuple: (seq, length, target, genre_seq, genre_target)
     seqs, lengths, targets, genre_seqs, genre_targets = zip(*batch)
-    
     padded_seqs = []
     for i, s in enumerate(seqs):
         if s.numel() == 0:  # if the sequence is empty
@@ -131,10 +118,8 @@ def movie_collate_fn(batch, fixed_length):
             print(f"Warning: Sample {i} padded sequence length is {padded.size(0)} (expected {fixed_length}). Original length was {s.size(0)}.")
         padded_seqs.append(padded)
     padded_seqs = torch.stack(padded_seqs)
-    
     new_lengths = torch.tensor([min(l.item(), fixed_length) for l in lengths])
     targets = torch.stack(targets)
-    
     if genre_seqs[0] is not None:
         padded_genre_seqs = []
         for i, s in enumerate(genre_seqs):
@@ -159,6 +144,7 @@ def movie_collate_fn(batch, fixed_length):
 ############################################
 # Loss Function: FocalLoss
 ############################################
+
 class FocalLoss(nn.Module):
     def __init__(self, alpha=1, gamma=2):
         super(FocalLoss, self).__init__()
@@ -174,6 +160,7 @@ class FocalLoss(nn.Module):
 ############################################
 # Evaluation Function (with Genre Integration) for Movie Model
 ############################################
+
 def evaluate(model, genre_model, genre_diff, split_csv, diff, device):
     eval_data = pd.read_csv(os.path.join(MERGED_DATA_DIR, split_csv))
     batch_size = args.batch_size
@@ -228,6 +215,7 @@ def evaluate(model, genre_model, genre_diff, split_csv, diff, device):
 ############################################
 # Original Training Function for One Fold (Movie Model)
 ############################################
+
 def train_fold(fold):
     global movie_genre_mapping, genre_movie_mapping
     print(f"\n========== Fold {fold} ==========")
@@ -238,8 +226,7 @@ def train_fold(fold):
     test_df = pd.read_csv(os.path.join(MERGED_DATA_DIR, test_csv))
     train_dataset = MovieDataset(train_df)
     test_dataset = MovieDataset(test_df)
-    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True,
-                          collate_fn=lambda batch: movie_collate_fn(batch, fixed_length=10))
+    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, collate_fn=lambda batch: movie_collate_fn(batch, fixed_length=10))
     statics_file = os.path.join(MERGED_DATA_DIR, "statics.csv")
     if os.path.exists(statics_file):
         statics_df = pd.read_csv(statics_file)
@@ -267,8 +254,8 @@ def train_fold(fold):
         optimizer = RAdam(model.parameters(), lr=args.lr, weight_decay=args.l2_decay)
     elif args.optimizer == 'lamb':
         optimizer = Lamb(model.parameters(), lr=args.lr, eps=args.eps, weight_decay=args.l2_decay)
-    elif args.optimizer == 'adabelief':
-        optimizer = AdaBelief(model.parameters(), lr=args.lr, eps=args.eps, weight_decay=args.l2_decay)
+    elif args.optimizer == 'adamw':
+        optimizer = optim.AdamW(model.parameters(), lr=args.lr, eps=args.eps, weight_decay=args.l2_decay)
     else:
         optimizer = optim.AdamW(model.parameters(), lr=args.lr, eps=args.eps, weight_decay=args.l2_decay)
         
@@ -331,23 +318,17 @@ def train_fold(fold):
 ############################################
 # New Training Function for Experimental Folds (p1 and p2) for Movie Model
 ############################################
+
 def train_experiment_movie_with_length(exp, seq_length):
-    """
-    Trains the movie model using experimental folds.
-    'exp' should be either "p1" or "p2". It loads files named "train_fold{exp}.df" and "test_fold{exp}.df"
-    and builds the model using the provided training sequence length (without target).
-    Additionally, if exp is "p1", it loads the pretrained genre model weights from "models/genre_tenc_p1.pth".
-    """
+    
     print(f"\n========== Experiment {exp} ==========")
     fold_metrics = FoldMetrics(exp)
     train_csv = f"train_fold{exp}.df"
     test_csv = f"test_fold{exp}.df"
     train_df = pd.read_csv(os.path.join(MERGED_DATA_DIR, train_csv))
     test_df = pd.read_csv(os.path.join(MERGED_DATA_DIR, test_csv))
-    train_loader = DataLoader(MovieDataset(train_df), batch_size=args.batch_size, shuffle=True,
-                          collate_fn=lambda batch: movie_collate_fn(batch, fixed_length=seq_length))
-    test_loader = DataLoader(MovieDataset(test_df), batch_size=args.batch_size, shuffle=False,
-                         collate_fn=lambda batch: movie_collate_fn(batch, fixed_length=seq_length))
+    train_loader = DataLoader(MovieDataset(train_df), batch_size=args.batch_size, shuffle=True, collate_fn=lambda batch: movie_collate_fn(batch, fixed_length=seq_length))
+    test_loader = DataLoader(MovieDataset(test_df), batch_size=args.batch_size, shuffle=False, collate_fn=lambda batch: movie_collate_fn(batch, fixed_length=seq_length))
     statics_file = os.path.join(MERGED_DATA_DIR, "statics.csv")
     if os.path.exists(statics_file):
         statics_df = pd.read_csv(statics_file)
@@ -441,13 +422,9 @@ def train_experiment_movie_with_length(exp, seq_length):
 ############################################
 # New Training Function for Experimental Fold p3 for Movie Model
 ############################################
+
 def train_experiment_movie_p3(seq_length):
-    """
-    Trains the movie model using experimental fold p3.
-    This function loads files "p3_fold_train.df", "p3_fold_valid.df", and "p3_fold_test.df".
-    It uses the training set for updates, performs periodic evaluation on the validation set,
-    and then a final evaluation on the test set.
-    """
+   
     print("\n========== Experiment p3 ==========")
     fold_metrics = FoldMetrics("p3")
     train_csv = "train_foldp3.df"
@@ -475,7 +452,6 @@ def train_experiment_movie_p3(seq_length):
     diff = MovieDiffusion(args.timesteps, args.beta_start, args.beta_end, args.w)
     genre_model = Tenc(args.hidden_factor, genre_vocab_size_dynamic, seq_length, args.dropout_rate, args.diffuser_type, device)
     genre_diff = diffusion(100, args.beta_start, args.beta_end, args.w)
-    # Try loading p3 pretrained genre weights; if unavailable, fallback to p2.
     try:
         genre_model, genre_diff = load_genres_predictor(genre_model, 'models/genre_tenc_p3.pth', 'models/genre_diff_p3.pth')
     except:
@@ -494,6 +470,7 @@ def train_experiment_movie_p3(seq_length):
         optimizer = AdaBelief(model.parameters(), lr=args.lr, eps=args.eps, weight_decay=args.l2_decay)
     else:
         optimizer = optim.AdamW(model.parameters(), lr=args.lr, eps=args.eps, weight_decay=args.l2_decay)
+
     if args.scheduler == 'reduce_on_plateau':
         scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=args.scheduler_factor, eps=args.scheduler_eps)
     elif args.scheduler == 'cosine':
@@ -553,6 +530,7 @@ def train_experiment_movie_p3(seq_length):
 ############################################
 # Main Function
 ############################################
+
 def main():
     NUM_FOLDS = 10
     global movie_genre_mapping, genre_movie_mapping
@@ -586,8 +564,7 @@ def main():
 
     if args.tune:
         tuning_fold = 1
-        # Tuning steps (lr, optimizer, dropout_rate, l2_decay, eps, timesteps, scheduler, etc.)
-        lr_candidates = [0.1, 0.05, 0.01, 0.005, 0.001]
+        lr_candidates = [0.05, 0.01, 0.005, 0.001]
         tuning_lr_recorder = LossTuningRecorder("lr", candidates=lr_candidates, save_dir="item")
         for candidate in tqdm(lr_candidates, desc="Tuning lr based on loss"):
             args.lr = candidate
@@ -601,7 +578,7 @@ def main():
         args.lr = best_lr
         tuning_lr_recorder.save_to_file("./item/tuning_lr.json")
 
-        optimizer_candidates = ['lamb', 'adabelief', 'radam', 'adamp']
+        optimizer_candidates = ['lamb', 'adamw', 'radam', 'adamp']
         tuning_optimizer_recorder = LossTuningRecorder("optimizer", candidates=optimizer_candidates, save_dir="item")
         for candidate in tqdm(optimizer_candidates, desc="Tuning optimizer based on loss"):
             args.optimizer = candidate
@@ -616,7 +593,7 @@ def main():
         tuning_optimizer_recorder.save_to_file("./item/tuning_optimizer.json")
 
 
-        timesteps_candidates = [50, 100, 150, 200, 250, 300, 350, 400]
+        timesteps_candidates = [100, 150, 200, 250, 300]
         tuning_timesteps_recorder = LossTuningRecorder("timesteps", candidates=timesteps_candidates, save_dir="item")
         for candidate in tqdm(timesteps_candidates, desc="Tuning timesteps based on loss"):
             args.timesteps = candidate
@@ -631,7 +608,7 @@ def main():
         tuning_timesteps_recorder.save_to_file("./item/tuning_timesteps.json")
 
 
-        dropout_candidates = [1e-1, 1e-2, 1e-3, 1e-4, 5e-4, 1e-5, 5e-5, 1e-6, 1e-7, 1e-8]
+        dropout_candidates = [1e-1, 1e-2, 1e-4, 1e-8]
         tuning_dropout_recorder = LossTuningRecorder("dropout_rate", candidates=dropout_candidates, save_dir="item")
         for candidate in tqdm(dropout_candidates, desc="Tuning dropout_rate based on loss"):
             args.dropout_rate = candidate
@@ -645,7 +622,7 @@ def main():
         args.dropout_rate = best_dropout
         tuning_dropout_recorder.save_to_file("./item/tuning_dropout.json")
 
-        l2_candidates = [1e-1, 1e-2, 1e-3, 1e-4, 5e-4, 1e-5, 5e-5, 1e-6, 1e-7, 1e-8]
+        l2_candidates = [1e-1, 1e-2, 1e-4, 1e-8]
         tuning_l2_recorder = LossTuningRecorder("l2_decay", candidates=l2_candidates, save_dir="item")
         for candidate in tqdm(l2_candidates, desc="Tuning l2_decay based on loss"):
             args.l2_decay = candidate
@@ -659,7 +636,7 @@ def main():
         args.l2_decay = best_l2
         tuning_l2_recorder.save_to_file("./item/tuning_l2.json")
 
-        eps_candidates = [1e-1, 1e-2, 1e-3, 1e-4, 5e-4, 1e-5, 5e-5, 1e-6, 1e-7, 1e-8]
+        eps_candidates = [1e-1, 1e-2, 1e-4, 1e-8]
         tuning_eps_recorder = LossTuningRecorder("eps", candidates=eps_candidates, save_dir="item")
         for candidate in tqdm(eps_candidates, desc="Tuning eps based on loss"):
             args.eps = candidate
@@ -674,60 +651,14 @@ def main():
         tuning_eps_recorder.save_to_file("./item/tuning_eps.json")
 
 
-        scheduler_candidates = ['reduce_on_plateau', 'cosine', 'step']
-        tuning_scheduler_recorder = LossTuningRecorder("scheduler", candidates=scheduler_candidates, save_dir="item")
-        for candidate in tqdm(scheduler_candidates, desc="Tuning scheduler based on loss"):
-            args.scheduler = candidate
-            fm = train_fold(tuning_fold)
-            for epoch, metrics in fm.test_metrics.items():
-                tuning_scheduler_recorder.record(candidate, epoch, metrics['loss'])
-            final_epoch = max(fm.test_metrics.keys())
-            print(f"[scheduler candidate {candidate}] Fold {tuning_fold}: Loss = {fm.test_metrics[final_epoch]['loss']:.4f}")
-        best_scheduler = tuning_scheduler_recorder.find_best_loss(eval_epoch=100)
-        print("\nBest scheduler based on loss:", best_scheduler)
-        args.scheduler = best_scheduler
-        tuning_scheduler_recorder.save_to_file("./item/tuning_scheduler.json")
-
-        if args.scheduler in ['reduce_on_plateau', 'step']:
-            scheduler_factor_candidates = [0.1, 0.3, 0.5, 0.7, 0.9]
-            tuning_scheduler_factor_recorder = LossTuningRecorder("scheduler_factor", candidates=scheduler_factor_candidates, save_dir="item")
-            for candidate in tqdm(scheduler_factor_candidates, desc="Tuning scheduler factor based on loss"):
-                args.scheduler_factor = candidate
-                fm = train_fold(tuning_fold)
-                for epoch, metrics in fm.test_metrics.items():
-                    tuning_scheduler_factor_recorder.record(candidate, epoch, metrics['loss'])
-                final_epoch = max(fm.test_metrics.keys())
-                print(f"[scheduler_factor candidate {candidate}] Fold {tuning_fold}: Loss = {fm.test_metrics[final_epoch]['loss']:.4f}")
-            best_scheduler_factor = tuning_scheduler_factor_recorder.find_best_loss(eval_epoch=100)
-            print("\nBest scheduler factor based on loss:", best_scheduler_factor)
-            args.scheduler_factor = best_scheduler_factor
-            tuning_scheduler_factor_recorder.save_to_file("./item/tuning_scheduler_factor.json")
-
-            scheduler_eps_candidates = [1e-2, 1e-4, 1e-8, 1e-16]
-            tuning_scheduler_eps_recorder = LossTuningRecorder("scheduler_eps", candidates=scheduler_eps_candidates, save_dir="item")
-            for candidate in tqdm(scheduler_eps_candidates, desc="Tuning scheduler eps based on loss"):
-                args.scheduler_eps = candidate
-                fm = train_fold(tuning_fold)
-                for epoch, metrics in fm.test_metrics.items():
-                    tuning_scheduler_eps_recorder.record(candidate, epoch, metrics['loss'])
-                final_epoch = max(fm.test_metrics.keys())
-                print(f"[scheduler_eps candidate {candidate}] Fold {tuning_fold}: Loss = {fm.test_metrics[final_epoch]['loss']:.4f}")
-            best_scheduler_eps = tuning_scheduler_eps_recorder.find_best_loss(eval_epoch=100)
-            print("\nBest scheduler eps based on loss:", best_scheduler_eps)
-            args.scheduler_eps = best_scheduler_eps
-            tuning_scheduler_eps_recorder.save_to_file("./item/tuning_scheduler_eps.json")
 
         best_candidates = {
             "lr": best_lr,
-            "optimizer": best_optimizer,
             "timesteps": best_timesteps,
-
+            "optimizer": best_optimizer,
             "dropout_rate": best_dropout,
             "l2_decay": best_l2,
-            "eps": best_eps,
-            "scheduler": best_scheduler,
-            "scheduler_factor": args.scheduler_factor,
-            "scheduler_eps": args.scheduler_eps 
+            "eps": best_eps
         }
         with open("./item/best_candidates.json", "w") as f:
             json.dump(best_candidates, f, indent=2)
@@ -764,30 +695,30 @@ def main():
             metrics_recorder.add_fold(fm)
         metrics_recorder.save_to_file("item/average_test_metrics.txt")
         
-        # ----- New: Run Experimental Folds for Movie Model -----
-        # if args.exp_length is not None:
-        #     movie_exp_p1_length = args.exp_length if args.exp_length > 0 else 3
-        #     movie_exp_p2_length = args.exp_length if args.exp_length > 0 else 10
-        #     movie_exp_p3_length = args.exp_length if args.exp_length > 0 else 20
-        # else:
-        #     movie_exp_p1_length = 3
-        #     movie_exp_p2_length = 10
-        #     movie_exp_p3_length = 20
+        #----- New: Run Experimental Folds for Movie Model -----
+        if args.exp_length is not None:
+            movie_exp_p1_length = args.exp_length if args.exp_length > 0 else 3
+            movie_exp_p2_length = args.exp_length if args.exp_length > 0 else 10
+            movie_exp_p3_length = args.exp_length if args.exp_length > 0 else 20
+        else:
+            movie_exp_p1_length = 3
+            movie_exp_p2_length = 10
+            movie_exp_p3_length = 20
 
-        # print("\n========== Running Experimental Folds for Movie Model ==========")
-        # exp_metrics_movie_p1 = train_experiment_movie_with_length("p1", movie_exp_p1_length)
-        # with open("item/movie_exp_p1_metrics.txt", "w") as f:
-        #     f.write(str(exp_metrics_movie_p1))
-        # exp_metrics_movie_p2 = train_experiment_movie_with_length("p2", movie_exp_p2_length)
-        # with open("item/movie_exp_p2_metrics.txt", "w") as f:
-        #     f.write(str(exp_metrics_movie_p2))
-        # print("Experimental movie fold metrics saved to item/movie_exp_p1_metrics.txt and item/movie_exp_p2_metrics.txt")
+        print("\n========== Running Experimental Folds for Movie Model ==========")
+        exp_metrics_movie_p1 = train_experiment_movie_with_length("p1", movie_exp_p1_length)
+        with open("item/movie_exp_p1_metrics.txt", "w") as f:
+            f.write(str(exp_metrics_movie_p1))
+        exp_metrics_movie_p2 = train_experiment_movie_with_length("p2", movie_exp_p2_length)
+        with open("item/movie_exp_p2_metrics.txt", "w") as f:
+            f.write(str(exp_metrics_movie_p2))
+        print("Experimental movie fold metrics saved to item/movie_exp_p1_metrics.txt and item/movie_exp_p2_metrics.txt")
         
-        # print("\n========== Running Experimental Fold p3 for Movie Model ==========")
-        # exp_metrics_movie_p3 = train_experiment_movie_p3(movie_exp_p3_length)
-        # with open("item/movie_exp_p3_metrics.txt", "w") as f:
-        #     f.write(str(exp_metrics_movie_p3))
-        # print("Experimental movie fold metrics saved to item/movie_exp_p3_metrics.txt")
+        print("\n========== Running Experimental Fold p3 for Movie Model ==========")
+        exp_metrics_movie_p3 = train_experiment_movie_p3(movie_exp_p3_length)
+        with open("item/movie_exp_p3_metrics.txt", "w") as f:
+            f.write(str(exp_metrics_movie_p3))
+        print("Experimental movie fold metrics saved to item/movie_exp_p3_metrics.txt")
 
 if __name__ == '__main__':
     main()

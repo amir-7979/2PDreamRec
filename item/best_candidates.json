@@ -1,11 +1,8 @@
 {
   "lr": 0.01,
-  "optimizer": "adamp",
-  "timesteps": 50,
-  "dropout_rate": 0.0005,
-  "l2_decay": 0.01,
-  "eps": 5e-05,
-  "scheduler": "reduce_on_plateau",
-  "scheduler_factor": 0.1,
-  "scheduler_eps": 0.01
+  "timesteps": 100,
+  "optimizer": "adamw",
+  "dropout_rate": 0.1,
+  "l2_decay": 1e-08,
+  "eps": 0.0001
 }
