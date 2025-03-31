@@ -1,8 +1,5 @@
 {
   "lr": 0.01,
-  "optimizer": "nadam",
-  "timesteps": 150,
-  "dropout_rate": 0.1,
-  "l2_decay": 0.0001,
-  "eps": 0.0001
+  "optimizer": "lamb",
+  "timesteps": 300
 }

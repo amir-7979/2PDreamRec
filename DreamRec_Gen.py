@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 import logging
 from Modules_ori import MovieDiffusion, Tenc, MovieTenc, load_genres_predictor, diffusion, Tenc
 from utility import extract_axis_1, calculate_hit
-from recorders import LossRecorder, MetricsRecorder, TuningRecorder, FoldMetrics, AverageMetrics
+from recorders import LossRecorder, MetricsRecorder, LossTuningRecorder, TuningRecorder, FoldMetrics, AverageMetrics
 from adabelief_pytorch import AdaBelief
 from torch_optimizer import Lamb
 from torch.optim.lr_scheduler import ReduceLROnPlateau
@@ -54,7 +54,7 @@ def parse_args():
     parser.add_argument('--random_seed', type=int, default=42, help='Random seed.')
     parser.add_argument('--batch_size', type=int, default=1024, help='Batch size.')
     parser.add_argument('--lr', type=float, default=0.01, help='Learning rate.')
-    parser.add_argument('--optimizer', type=str, default='nadam', help='Optimizer type: [adam, adamw, adagrad, rmsprop].')
+    parser.add_argument('--optimizer', type=str, default='adam', help='Optimizer type: [adam, adamw, adagrad, rmsprop].')
     parser.add_argument('--timesteps', type=int, default=100, help='Timesteps for diffusion.')
     parser.add_argument('--dropout_rate', type=float, default=0.3, help='Dropout rate.')
     parser.add_argument('--eps', type=float, default=5e-5, help='L2 loss regularization coefficient.')
@@ -164,8 +164,8 @@ def train_fold(fold):
         optimizer = optim.NAdam(model.parameters(), lr=args.lr, eps=args.eps ,weight_decay=args.l2_decay)
     elif args.optimizer == 'adamw':
         optimizer = optim.AdamW(model.parameters(), lr=args.lr, eps=args.eps, weight_decay=args.l2_decay)
-    elif args.optimizer == 'adabelief':
-        optimizer = AdaBelief(model.parameters(), lr=args.lr, eps=args.eps, weight_decay=args.l2_decay)
+    elif args.optimizer == 'adam':
+        optimizer = optim.Adam(model.parameters(), lr=args.lr, eps=args.eps, weight_decay=args.l2_decay)
     elif args.optimizer == 'lamb':
         optimizer = Lamb(model.parameters(), lr=args.lr, eps=args.eps, weight_decay=args.l2_decay)
     else:
@@ -355,19 +355,19 @@ def train_experiment_genre_p3(seq_length):
 def main():
     NUM_FOLDS = 10
     if args.tune:
-        tuning_fold = 1
+        tuning_fold = 3
 
         lr_candidates = [0.05, 0.01, 0.005, 0.001]
-        optimizer_candidates = ['nadam', 'lamb', 'adamw', 'adabelief']
+        optimizer_candidates = ['nadam', 'lamb', 'adamw', 'adam']
         timesteps_candidates =  [100, 150, 200, 250, 300]
         dropout_candidates = [1e-1, 1e-2, 1e-3, 1e-4, 1e-5]
         l2_candidates = [1e-1, 1e-2, 1e-3, 1e-4, 1e-5]
         eps_candidates = [1e-1, 1e-2, 1e-3, 1e-4, 1e-5]
 
         # Create tuning recorders
-        tuning_lr_recorder = TuningRecorder("lr", lr_candidates, save_dir="category")
-        tuning_optimizer_recorder = TuningRecorder("optimizer", optimizer_candidates, save_dir="category")
-        tuning_timesteps_recorder = TuningRecorder("timesteps", timesteps_candidates, save_dir="category")
+        tuning_lr_recorder = LossTuningRecorder("lr", lr_candidates, save_dir="category")
+        tuning_optimizer_recorder = LossTuningRecorder("optimizer", optimizer_candidates, save_dir="category")
+        tuning_timesteps_recorder = LossTuningRecorder("timesteps", timesteps_candidates, save_dir="category")
         tuning_dropout_recorder = TuningRecorder("dropout_rate", dropout_candidates, save_dir="category")
         tuning_l2_recorder = TuningRecorder("l2_decay", l2_candidates, save_dir="category")
         tuning_eps_recorder = TuningRecorder("eps", eps_candidates, save_dir="category")
@@ -375,73 +375,75 @@ def main():
         for candidate in tqdm(lr_candidates, desc="Tuning lr"):
             args.lr = candidate
             fm = train_fold(tuning_fold)
-            fold_hr10_list = [fm.test_metrics[epoch]['HR10'] for epoch in sorted(fm.test_metrics.keys())]
+            fold_hr10_list = [fm.test_metrics[epoch]['loss'] for epoch in sorted(fm.test_metrics.keys())]
             for i, hr in enumerate(fold_hr10_list):
                 tuning_lr_recorder.record(candidate, (i + 1) * 10, hr)
-            print(f"[lr candidate {candidate}] Fold {tuning_fold}: HR@10 = {fold_hr10_list}")
-        best_lr = tuning_lr_recorder.find_best()
+            print(f"[lr candidate {candidate}] Fold {tuning_fold}: loss = {fold_hr10_list}")
+        best_lr = tuning_lr_recorder.find_best_loss(eval_epoch=100)
         print("\nBest learning rate found:", best_lr)
         args.lr = best_lr
-
+        tuning_lr_recorder.save_to_file("./category/tuning_lr.json")\
+        
         for candidate in tqdm(optimizer_candidates, desc="Tuning optimizer"):
             args.optimizer = candidate
             fm = train_fold(tuning_fold)
-            fold_hr10_list = [fm.test_metrics[epoch]['HR10'] for epoch in sorted(fm.test_metrics.keys())]
+            fold_hr10_list = [fm.test_metrics[epoch]['loss'] for epoch in sorted(fm.test_metrics.keys())]
             for i, hr in enumerate(fold_hr10_list):
                 tuning_optimizer_recorder.record(candidate, (i + 1) * 10, hr)
-            print(f"[optimizer candidate {candidate}] Fold {tuning_fold}: HR@10 = {fold_hr10_list}")
-        best_optimizer = tuning_optimizer_recorder.find_best()
+            print(f"[optimizer candidate {candidate}] Fold {tuning_fold}: loss = {fold_hr10_list}")
+        best_optimizer = tuning_optimizer_recorder.find_best_loss(eval_epoch=100)
         print("\nBest optimizer found:", best_optimizer)
         args.optimizer = best_optimizer
+        tuning_optimizer_recorder.save_to_file("./category/tuning_optimizer.json")
 
         for candidate in tqdm(timesteps_candidates, desc="Tuning timesteps"):
             args.timesteps = candidate
             fm = train_fold(tuning_fold)
-            fold_hr10_list = [fm.test_metrics[epoch]['HR10'] for epoch in sorted(fm.test_metrics.keys())]
+            fold_hr10_list = [fm.test_metrics[epoch]['loss'] for epoch in sorted(fm.test_metrics.keys())]
             for i, hr in enumerate(fold_hr10_list):
                 tuning_timesteps_recorder.record(candidate, (i + 1) * 10, hr)
-            print(f"[timesteps candidate {candidate}] Fold {tuning_fold}: HR@10 = {fold_hr10_list}")
-        best_timesteps = tuning_timesteps_recorder.find_best()
+            print(f"[timesteps candidate {candidate}] Fold {tuning_fold}: loss = {fold_hr10_list}")
+        best_timesteps = tuning_timesteps_recorder.find_best_loss(eval_epoch=100)
         print("\nBest timesteps found:", best_timesteps)
         args.timesteps = best_timesteps
+        tuning_timesteps_recorder.save_to_file("./category/tuning_timesteps.json")
 
-        for candidate in tqdm(dropout_candidates, desc="Tuning dropout_rate"):
-            args.dropout_rate = candidate
-            fm = train_fold(tuning_fold)
-            fold_hr10_list = [fm.test_metrics[epoch]['HR10'] for epoch in sorted(fm.test_metrics.keys())]
-            for i, hr in enumerate(fold_hr10_list):
-                tuning_dropout_recorder.record(candidate, (i + 1) * 10, hr)
-            print(f"[dropout_rate candidate {candidate}] Fold {tuning_fold}: HR@10 = {fold_hr10_list}")
-        best_dropout = tuning_dropout_recorder.find_best()
-        print("\nBest dropout_rate found:", best_dropout)
-        args.dropout_rate = best_dropout
 
-        for candidate in tqdm(l2_candidates, desc="Tuning l2_decay"):
-            args.l2_decay = candidate
-            fm = train_fold(tuning_fold)
-            fold_hr10_list = [fm.test_metrics[epoch]['HR10'] for epoch in sorted(fm.test_metrics.keys())]
-            for i, hr in enumerate(fold_hr10_list):
-                tuning_l2_recorder.record(candidate, (i + 1) * 10, hr)
-            print(f"[l2_decay candidate {candidate}] Fold {tuning_fold}: HR@10 = {fold_hr10_list}")
-        best_l2 = tuning_l2_recorder.find_best()
-        print("\nBest l2_decay found:", best_l2)
-        args.l2_decay = best_l2
+        # for candidate in tqdm(dropout_candidates, desc="Tuning dropout_rate"):
+        #     args.dropout_rate = candidate
+        #     fm = train_fold(tuning_fold)
+        #     fold_hr10_list = [fm.test_metrics[epoch]['HR10'] for epoch in sorted(fm.test_metrics.keys())]
+        #     for i, hr in enumerate(fold_hr10_list):
+        #         tuning_dropout_recorder.record(candidate, (i + 1) * 10, hr)
+        #     print(f"[dropout_rate candidate {candidate}] Fold {tuning_fold}: HR@10 = {fold_hr10_list}")
+        # best_dropout = tuning_dropout_recorder.find_best()
+        # print("\nBest dropout_rate found:", best_dropout)
+        # args.dropout_rate = best_dropout
 
-        for candidate in tqdm(eps_candidates, desc="Tuning eps"):
-            args.eps = candidate
-            fm = train_fold(tuning_fold)
-            fold_hr10_list = [fm.test_metrics[epoch]['HR10'] for epoch in sorted(fm.test_metrics.keys())]
-            for i, hr in enumerate(fold_hr10_list):
-                tuning_eps_recorder.record(candidate, (i + 1) * 10, hr)
-            print(f"[eps candidate {candidate}] Fold {tuning_fold}: HR@10 = {fold_hr10_list}")
-        best_eps = tuning_eps_recorder.find_best()
-        print("\nBest eps found:", best_eps)
-        args.eps = best_eps
+        # for candidate in tqdm(l2_candidates, desc="Tuning l2_decay"):
+        #     args.l2_decay = candidate
+        #     fm = train_fold(tuning_fold)
+        #     fold_hr10_list = [fm.test_metrics[epoch]['HR10'] for epoch in sorted(fm.test_metrics.keys())]
+        #     for i, hr in enumerate(fold_hr10_list):
+        #         tuning_l2_recorder.record(candidate, (i + 1) * 10, hr)
+        #     print(f"[l2_decay candidate {candidate}] Fold {tuning_fold}: HR@10 = {fold_hr10_list}")
+        # best_l2 = tuning_l2_recorder.find_best()
+        # print("\nBest l2_decay found:", best_l2)
+        # args.l2_decay = best_l2
+
+        # for candidate in tqdm(eps_candidates, desc="Tuning eps"):
+        #     args.eps = candidate
+        #     fm = train_fold(tuning_fold)
+        #     fold_hr10_list = [fm.test_metrics[epoch]['HR10'] for epoch in sorted(fm.test_metrics.keys())]
+        #     for i, hr in enumerate(fold_hr10_list):
+        #         tuning_eps_recorder.record(candidate, (i + 1) * 10, hr)
+        #     print(f"[eps candidate {candidate}] Fold {tuning_fold}: HR@10 = {fold_hr10_list}")
+        # best_eps = tuning_eps_recorder.find_best()
+        # print("\nBest eps found:", best_eps)
+        # args.eps = best_eps
         
         os.makedirs("./category", exist_ok=True)
-        tuning_lr_recorder.save_to_file("./category/tuning_lr.json")
-        tuning_optimizer_recorder.save_to_file("./category/tuning_optimizer.json")
-        tuning_timesteps_recorder.save_to_file("./category/tuning_timesteps.json")
+        
         tuning_dropout_recorder.save_to_file("./category/tuning_dropout.json")
         tuning_l2_recorder.save_to_file("./category/tuning_l2.json")
         tuning_eps_recorder.save_to_file("./category/tuning_eps.json")
@@ -456,9 +458,9 @@ def main():
             "lr": best_lr,
             "optimizer": best_optimizer,
             "timesteps": best_timesteps,
-            "dropout_rate": best_dropout,
-            "l2_decay": best_l2,
-            "eps": best_eps
+            # "dropout_rate": best_dropout,
+            # "l2_decay": best_l2,
+            # "eps": best_eps
         }
         
         with open("./category/best_candidates.json", "w") as f:
