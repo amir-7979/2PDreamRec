@@ -1,3 +1,7 @@
 .venv/
 data/
 movieles_1m/
+mind_data/
+processed_80_10_10/
+mind_processed/
+raw_movies_tv/
