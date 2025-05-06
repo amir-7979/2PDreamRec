@@ -1,5 +1,0 @@
-{
-  "lr": 0.01,
-  "optimizer": "lamb",
-  "timesteps": 300
-}

@@ -1,3 +1,0 @@
-Fold p3 Metrics:
-Epoch	TrainLoss	TestLoss	HR@5	NDCG@5	HR@10	NDCG@10
-100	0.0001	0.0001	0.2881	0.1768	0.3841	0.2072

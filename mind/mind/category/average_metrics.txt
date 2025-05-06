@@ -1,0 +1,2 @@
+Average Metrics Across Folds:
+Epoch	AvgTrainLoss	AvgTestLoss	AvgHR@5	AvgNDCG@5	AvgHR@10	AvgNDCG@10

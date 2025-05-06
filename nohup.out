@@ -1,1206 +1,0 @@
-📂 meta_Movies_and_TV.jsonl.gz exists, skipping
-📂 Movies_and_TV.jsonl.gz exists, skipping
-📥 Loading metadata…
- metadata: 0it [00:00, ?it/s] metadata: 3176it [00:00, 31753.52it/s] metadata: 6352it [00:00, 31121.56it/s] metadata: 9888it [00:00, 33034.32it/s] metadata: 13478it [00:00, 34150.40it/s] metadata: 16992it [00:00, 34501.72it/s] metadata: 20485it [00:00, 34510.80it/s] metadata: 24079it [00:00, 34974.89it/s] metadata: 27652it [00:00, 35213.43it/s] metadata: 31233it [00:00, 35392.94it/s] metadata: 35201it [00:01, 36712.86it/s] metadata: 39893it [00:01, 39831.69it/s] metadata: 43877it [00:01, 38403.15it/s] metadata: 48688it [00:01, 41267.22it/s] metadata: 53477it [00:01, 43229.86it/s] metadata: 58170it [00:01, 44330.09it/s] metadata: 62913it [00:01, 45247.82it/s] metadata: 67505it [00:01, 45448.30it/s] metadata: 72349it [00:01, 46342.51it/s] metadata: 77564it [00:01, 48077.04it/s] metadata: 83010it [00:02, 49970.40it/s] metadata: 88066it [00:02, 50142.27it/s] metadata: 93456it [00:02, 51263.59it/s] metadata: 98884it [00:02, 52165.05it/s] metadata: 104102it [00:02, 45120.26it/s] metadata: 109509it [00:02, 47538.44it/s] metadata: 114673it [00:02, 48678.71it/s] metadata: 119984it [00:02, 49939.35it/s] metadata: 125368it [00:02, 51064.85it/s] metadata: 130809it [00:02, 52041.23it/s] metadata: 136150it [00:03, 52442.93it/s] metadata: 141500it [00:03, 52754.74it/s] metadata: 146870it [00:03, 53034.65it/s] metadata: 152287it [00:03, 53371.66it/s] metadata: 157637it [00:03, 53360.46it/s] metadata: 162982it [00:03, 51887.74it/s] metadata: 168285it [00:03, 52218.50it/s] metadata: 173581it [00:03, 52430.64it/s] metadata: 178869it [00:03, 52561.46it/s] metadata: 184230it [00:03, 52872.83it/s] metadata: 189522it [00:04, 41032.02it/s] metadata: 194825it [00:04, 44011.95it/s] metadata: 200047it [00:04, 46162.02it/s] metadata: 204954it [00:04, 46952.47it/s] metadata: 209990it [00:04, 47898.14it/s] metadata: 214949it [00:04, 48379.10it/s] metadata: 219901it [00:04, 48709.34it/s] metadata: 225142it [00:04, 49791.64it/s] metadata: 230405it [00:04, 50627.12it/s] metadata: 235727it [00:05, 51391.53it/s] metadata: 240929it [00:05, 51577.03it/s] metadata: 246145it [00:05, 51745.97it/s] metadata: 251484it [00:05, 52235.92it/s] metadata: 256720it [00:05, 52271.04it/s] metadata: 261977it [00:05, 52358.94it/s] metadata: 267218it [00:05, 52308.39it/s] metadata: 272453it [00:05, 52002.61it/s] metadata: 277657it [00:06, 36707.30it/s] metadata: 282833it [00:06, 40185.02it/s] metadata: 288079it [00:06, 43229.31it/s] metadata: 293272it [00:06, 45506.15it/s] metadata: 298387it [00:06, 47041.77it/s] metadata: 303347it [00:06, 42614.02it/s] metadata: 307859it [00:06, 42787.66it/s] metadata: 312550it [00:06, 43903.22it/s] metadata: 317719it [00:06, 46071.15it/s] metadata: 322975it [00:06, 47917.05it/s] metadata: 328211it [00:07, 49202.05it/s] metadata: 333465it [00:07, 50177.55it/s] metadata: 338764it [00:07, 51004.88it/s] metadata: 344092it [00:07, 51677.55it/s] metadata: 349355it [00:07, 51960.26it/s] metadata: 354703it [00:07, 52413.03it/s] metadata: 360135it [00:07, 52981.51it/s] metadata: 365450it [00:07, 53027.87it/s] metadata: 370760it [00:07, 52508.35it/s] metadata: 376093it [00:07, 52751.52it/s] metadata: 381373it [00:08, 33975.69it/s] metadata: 386692it [00:08, 38110.99it/s] metadata: 391848it [00:08, 41271.01it/s] metadata: 397200it [00:08, 44345.92it/s] metadata: 402648it [00:08, 47020.39it/s] metadata: 408056it [00:08, 48953.79it/s] metadata: 413237it [00:08, 49691.74it/s] metadata: 418658it [00:08, 50981.53it/s] metadata: 424047it [00:09, 51823.28it/s] metadata: 429488it [00:09, 52579.02it/s] metadata: 434823it [00:09, 52631.67it/s] metadata: 440140it [00:09, 52783.31it/s] metadata: 445554it [00:09, 53185.26it/s] metadata: 451008it [00:09, 53587.30it/s] metadata: 456386it [00:09, 53531.25it/s] metadata: 461753it [00:09, 53520.08it/s] metadata: 467115it [00:09, 53058.57it/s] metadata: 472539it [00:09, 53408.36it/s] metadata: 477911it [00:10, 53500.84it/s] metadata: 483265it [00:10, 53162.77it/s] metadata: 488585it [00:10, 52847.13it/s] metadata: 493873it [00:10, 52705.01it/s] metadata: 499146it [00:10, 52671.24it/s] metadata: 504459it [00:10, 52803.22it/s] metadata: 509741it [00:10, 31082.35it/s] metadata: 515138it [00:11, 35673.14it/s] metadata: 520500it [00:11, 39670.63it/s] metadata: 525887it [00:11, 43098.15it/s] metadata: 531274it [00:11, 45859.27it/s] metadata: 536572it [00:11, 47763.74it/s] metadata: 541726it [00:11, 48748.76it/s] metadata: 546873it [00:11, 48945.40it/s] metadata: 551959it [00:11, 48946.36it/s] metadata: 556988it [00:11, 48916.99it/s] metadata: 561974it [00:11, 48958.72it/s] metadata: 567199it [00:12, 49917.42it/s] metadata: 572484it [00:12, 50777.20it/s] metadata: 577944it [00:12, 51906.91it/s] metadata: 583294it [00:12, 52378.49it/s] metadata: 588551it [00:12, 52255.99it/s] metadata: 593882it [00:12, 52563.82it/s] metadata: 599202it [00:12, 52753.25it/s] metadata: 604485it [00:12, 52550.20it/s] metadata: 609849it [00:12, 52873.80it/s] metadata: 615140it [00:12, 52703.91it/s] metadata: 620413it [00:13, 52552.33it/s] metadata: 625674it [00:13, 52568.69it/s] metadata: 631041it [00:13, 52888.91it/s] metadata: 636416it [00:13, 53141.15it/s] metadata: 641816it [00:13, 53392.10it/s] metadata: 647156it [00:13, 53307.19it/s] metadata: 652488it [00:13, 53182.72it/s] metadata: 658218it [00:13, 54411.73it/s] metadata: 663997it [00:13, 55412.76it/s] metadata: 669539it [00:14, 29314.93it/s] metadata: 675412it [00:14, 34742.75it/s] metadata: 681389it [00:14, 39962.27it/s] metadata: 687222it [00:14, 44176.27it/s] metadata: 693106it [00:14, 47795.57it/s] metadata: 699016it [00:14, 50743.12it/s] metadata: 704642it [00:14, 51566.81it/s] metadata: 710428it [00:14, 53307.83it/s] metadata: 716332it [00:15, 54930.06it/s] metadata: 722179it [00:15, 55949.80it/s] metadata: 728056it [00:15, 56765.67it/s] metadata: 733927it [00:15, 57336.22it/s] metadata: 739800it [00:15, 57746.94it/s] metadata: 745697it [00:15, 58106.19it/s] metadata: 748224it [00:15, 48067.53it/s]
-→ 433,364 metadata entries
-📥 Loading reviews…
- reviews: 0it [00:00, ?it/s] reviews: 11760it [00:00, 117595.63it/s] reviews: 23520it [00:00, 117442.29it/s] reviews: 36074it [00:00, 121120.50it/s] reviews: 48187it [00:00, 117105.27it/s] reviews: 60781it [00:00, 120219.79it/s] reviews: 72872it [00:00, 120429.55it/s] reviews: 86242it [00:00, 124722.42it/s] reviews: 99537it [00:00, 127321.22it/s] reviews: 112514it [00:00, 128071.78it/s] reviews: 125494it [00:01, 128591.04it/s] reviews: 138750it [00:01, 129798.75it/s] reviews: 151734it [00:01, 127528.46it/s] reviews: 165077it [00:01, 129288.58it/s] reviews: 178846it [00:01, 131796.97it/s] reviews: 192701it [00:01, 133809.18it/s] reviews: 206566it [00:01, 135255.48it/s] reviews: 220098it [00:01, 132797.76it/s] reviews: 233392it [00:01, 129156.79it/s] reviews: 246335it [00:01, 128498.55it/s] reviews: 259203it [00:02, 125001.88it/s] reviews: 271729it [00:02, 120488.02it/s] reviews: 283818it [00:02, 120128.41it/s] reviews: 296198it [00:02, 121170.95it/s] reviews: 310073it [00:02, 126289.69it/s] reviews: 322733it [00:02, 123531.50it/s] reviews: 335117it [00:02, 122306.29it/s] reviews: 348184it [00:02, 124742.80it/s] reviews: 360680it [00:02, 124496.55it/s] reviews: 373983it [00:02, 127014.53it/s] reviews: 386699it [00:03, 126979.94it/s] reviews: 399660it [00:03, 127760.77it/s] reviews: 412444it [00:03, 119918.47it/s] reviews: 425485it [00:03, 122902.69it/s] reviews: 439148it [00:03, 126878.64it/s] reviews: 452830it [00:03, 129787.67it/s] reviews: 467086it [00:03, 133552.30it/s] reviews: 480489it [00:03, 117140.50it/s] reviews: 492594it [00:03, 106686.88it/s] reviews: 503664it [00:04, 104899.27it/s] reviews: 514421it [00:04, 103531.44it/s] reviews: 527738it [00:04, 111544.73it/s] reviews: 540658it [00:04, 116462.88it/s] reviews: 554129it [00:04, 121651.65it/s] reviews: 567785it [00:04, 125960.37it/s] reviews: 581742it [00:04, 129930.30it/s] reviews: 596157it [00:04, 134101.52it/s] reviews: 611630it [00:04, 140209.44it/s] reviews: 625814it [00:04, 140690.93it/s] reviews: 639927it [00:05, 138992.21it/s] reviews: 655410it [00:05, 143671.41it/s] reviews: 669808it [00:05, 133752.65it/s] reviews: 683337it [00:05, 132283.47it/s] reviews: 696670it [00:05, 119046.53it/s] reviews: 709524it [00:05, 121585.82it/s] reviews: 716489it [00:05, 125165.53it/s]
-Traceback (most recent call last):
-  File "/home/nit/Desktop/2PDreamRec/amazon_data.py", line 225, in <module>
-    main()
-  File "/home/nit/Desktop/2PDreamRec/amazon_data.py", line 163, in main
-    df_rev =load_reviews(rpath)
-            ^^^^^^^^^^^^^^^^^^^
-  File "/home/nit/Desktop/2PDreamRec/amazon_data.py", line 92, in load_reviews
-    for line in tqdm(f,desc=" reviews"):
-  File "/home/nit/Desktop/2PDreamRec/.venv/lib/python3.12/site-packages/tqdm/std.py", line 1181, in __iter__
-    for obj in iterable:
-  File "/usr/lib/python3.12/gzip.py", line 337, in read1
-    return self._buffer.read1(size)
-           ^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/usr/lib/python3.12/_compression.py", line 67, in readinto
-    with memoryview(b) as view, view.cast("B") as byte_view:
-KeyboardInterrupt
-Tuning lr:   0%|          | 0/4 [00:00<?, ?it/s]INFO:root:Using statics: seq_size = 10, genre_vocab_size = 114
-Tuning lr:  25%|██▌       | 1/4 [1:06:11<3:18:35, 3971.93s/it]INFO:root:Using statics: seq_size = 10, genre_vocab_size = 114
-Fold 1 Epoch 001; Train loss: 0.2431; Time: 00:01:05
-Fold 1 Epoch 002; Train loss: 0.0001; Time: 00:01:03
-Fold 1 Epoch 003; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 004; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 005; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 006; Train loss: 0.0000; Time: 00:01:02
-Fold 1 Epoch 007; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 008; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 009; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 010; Train loss: 0.0000; Time: 00:01:04
-Fold 1: Evaluation at Epoch 10
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.064563   0.032526   0.087940   0.040081  
-Loss: 0.0000
-Fold 1 Epoch 011; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 012; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 013; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 014; Train loss: 0.0002; Time: 00:01:04
-Fold 1 Epoch 015; Train loss: 0.0007; Time: 00:01:05
-Fold 1 Epoch 016; Train loss: 0.0003; Time: 00:01:05
-Fold 1 Epoch 017; Train loss: 0.0006; Time: 00:01:04
-Fold 1 Epoch 018; Train loss: 0.0004; Time: 00:01:05
-Fold 1 Epoch 019; Train loss: 0.0004; Time: 00:01:05
-Fold 1 Epoch 020; Train loss: 0.0004; Time: 00:01:05
-Fold 1: Evaluation at Epoch 20
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.023377   0.012960   0.052499   0.022510  
-Loss: 0.0004
-Fold 1 Epoch 021; Train loss: 0.0004; Time: 00:01:05
-Fold 1 Epoch 022; Train loss: 0.0004; Time: 00:01:05
-Fold 1 Epoch 023; Train loss: 0.0005; Time: 00:01:03
-Fold 1 Epoch 024; Train loss: 0.0004; Time: 00:01:04
-Fold 1 Epoch 025; Train loss: 0.0005; Time: 00:01:03
-Fold 1 Epoch 026; Train loss: 0.0003; Time: 00:01:03
-Fold 1 Epoch 027; Train loss: 0.0005; Time: 00:01:05
-Fold 1 Epoch 028; Train loss: 0.0004; Time: 00:01:05
-Fold 1 Epoch 029; Train loss: 0.0004; Time: 00:01:04
-Fold 1 Epoch 030; Train loss: 0.0005; Time: 00:01:04
-Fold 1: Evaluation at Epoch 30
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.065226   0.042097   0.135976   0.064020  
-Loss: 0.0003
-Fold 1 Epoch 031; Train loss: 0.0005; Time: 00:01:04
-Fold 1 Epoch 032; Train loss: 0.0002; Time: 00:01:05
-Fold 1 Epoch 033; Train loss: 0.0005; Time: 00:01:04
-Fold 1 Epoch 034; Train loss: 0.0003; Time: 00:01:04
-Fold 1 Epoch 035; Train loss: 0.0006; Time: 00:01:04
-Fold 1 Epoch 036; Train loss: 0.0003; Time: 00:01:04
-Fold 1 Epoch 037; Train loss: 0.0006; Time: 00:01:05
-Fold 1 Epoch 038; Train loss: 0.0004; Time: 00:01:05
-Fold 1 Epoch 039; Train loss: 0.0005; Time: 00:01:04
-Fold 1 Epoch 040; Train loss: 0.0003; Time: 00:01:03
-Fold 1: Evaluation at Epoch 40
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.032790   0.021129   0.096116   0.040907  
-Loss: 0.0005
-Fold 1 Epoch 041; Train loss: 0.0005; Time: 00:01:03
-Fold 1 Epoch 042; Train loss: 0.0003; Time: 00:01:03
-Fold 1 Epoch 043; Train loss: 0.0004; Time: 00:01:02
-Fold 1 Epoch 044; Train loss: 0.0005; Time: 00:01:02
-Fold 1 Epoch 045; Train loss: 0.0003; Time: 00:01:03
-Fold 1 Epoch 046; Train loss: 0.0003; Time: 00:01:03
-Fold 1 Epoch 047; Train loss: 0.0005; Time: 00:01:04
-Fold 1 Epoch 048; Train loss: 0.0003; Time: 00:01:04
-Fold 1 Epoch 049; Train loss: 0.0004; Time: 00:01:04
-Fold 1 Epoch 050; Train loss: 0.0004; Time: 00:01:02
-Fold 1: Evaluation at Epoch 50
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.021963   0.012819   0.086659   0.033876  
-Loss: 0.0003
-Fold 1 Epoch 051; Train loss: 0.0004; Time: 00:01:03
-Fold 1 Epoch 052; Train loss: 0.0004; Time: 00:01:03
-Fold 1 Epoch 053; Train loss: 0.0005; Time: 00:01:03
-Fold 1 Epoch 054; Train loss: 0.0003; Time: 00:01:03
-Fold 1 Epoch 055; Train loss: 0.0004; Time: 00:01:04
-Fold 1 Epoch 056; Train loss: 0.0004; Time: 00:01:03
-Fold 1 Epoch 057; Train loss: 0.0005; Time: 00:01:04
-Fold 1 Epoch 058; Train loss: 0.0004; Time: 00:01:02
-Fold 1 Epoch 059; Train loss: 0.0004; Time: 00:01:03
-Fold 1 Epoch 060; Train loss: 0.0005; Time: 00:01:04
-Fold 1: Evaluation at Epoch 60
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.022758   0.013063   0.043705   0.019881  
-Loss: 0.0008
-[lr candidate 0.05] Fold 1: loss = [np.float64(3.990367079782248e-13), np.float64(0.0004383876397839507), np.float64(0.0003330013812833539), np.float64(0.000490102437887278), np.float64(0.0002524605026766867), np.float64(0.0008233336213808715)]
-Fold 1 Epoch 001; Train loss: 0.0502; Time: 00:01:03
-Fold 1 Epoch 002; Train loss: 0.0003; Time: 00:01:04
-Fold 1 Epoch 003; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 004; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 005; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 006; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 007; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 008; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 009; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 010; Train loss: 0.0000; Time: 00:01:04
-Fold 1: Evaluation at Epoch 10
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.000000   0.000000   0.000133   0.000040  
-Loss: 0.0000
-Fold 1 Epoch 011; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 012; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 013; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 014; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 015; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 016; Train loss: 0.0000; Time: 00:01:06
-Fold 1 Epoch 017; Train loss: 0.0000; Time: 00:01:06
-Fold 1 Epoch 018; Train loss: 0.0000; Time: 00:01:06
-Fold 1 Epoch 019; Train loss: 0.0000; Time: 00:01:06
-Fold 1 Epoch 020; Train loss: 0.0000; Time: 00:01:04
-Fold 1: Evaluation at Epoch 20
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.456582   0.185237   0.568562   0.221463  
-Loss: 0.0000
-Fold 1 Epoch 021; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 022; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 023; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 024; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 025; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 026; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 027; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 028; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 029; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 030; Train loss: 0.0000; Time: 00:01:03
-Fold 1: Evaluation at Epoch 30
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.104114   0.053699   0.605064   0.228082  
-Loss: 0.0000
-Fold 1 Epoch 031; Train loss: 0.0000; Time: 00:01:02
-Fold 1 Epoch 032; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 033; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 034; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 035; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 036; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 037; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 038; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 039; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 040; Train loss: 0.0000; Time: 00:01:04
-Fold 1: Evaluation at Epoch 40
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.495780   0.203756   0.601396   0.236475  
-Loss: 0.0000
-Fold 1 Epoch 041; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 042; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 043; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 044; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 045; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 046; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 047; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 048; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 049; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 050; Train loss: 0.0000; Time: 00:01:04
-Fold 1: Evaluation at Epoch 50
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.034955   0.018082   0.527642   0.189817  
-Loss: 0.0000
-Fold 1 Epoch 051; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 052; Train loss: 0.0000; Time: 00:01:02
-Fold 1 Epoch 053; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 054; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 055; Train loss: 0.0000; Time: 00:01:02
-Fold 1 Epoch 056; Train loss: 0.0000; Time: 00:01:02
-Fold 1 Epoch 057; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 058; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 059; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 060; Train loss: 0.0000; Time: 00:01:03
-Fold 1: Evaluation at Epoch 60
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.106589   0.048658   0.607406   0.222912  
-Loss: 0.0000
-Tuning lr:  50%|█████     | 2/4 [2:12:46<2:12:50, 3985.07s/it]INFO:root:Using statics: seq_size = 10, genre_vocab_size = 114
-Tuning lr:  75%|███████▌  | 3/4 [3:17:13<1:05:31, 3931.19s/it]INFO:root:Using statics: seq_size = 10, genre_vocab_size = 114
-INFO:root:Using statics: seq_size = 10, genre_vocab_size = 114
-[lr candidate 0.01] Fold 1: loss = [np.float64(2.7830717286639336e-38), np.float64(0.0), np.float64(0.0), np.float64(0.0), np.float64(0.0), np.float64(0.0)]
-Fold 1 Epoch 001; Train loss: 0.0812; Time: 00:01:03
-Fold 1 Epoch 002; Train loss: 0.0033; Time: 00:01:03
-Fold 1 Epoch 003; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 004; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 005; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 006; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 007; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 008; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 009; Train loss: 0.0000; Time: 00:01:02
-Fold 1 Epoch 010; Train loss: 0.0000; Time: 00:01:02
-Fold 1: Evaluation at Epoch 10
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.023863   0.012662   0.447567   0.141402  
-Loss: 0.0000
-Fold 1 Epoch 011; Train loss: 0.0000; Time: 00:01:02
-Fold 1 Epoch 012; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 013; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 014; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 015; Train loss: 0.0000; Time: 00:01:02
-Fold 1 Epoch 016; Train loss: 0.0000; Time: 00:01:01
-Fold 1 Epoch 017; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 018; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 019; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 020; Train loss: 0.0000; Time: 00:01:02
-Fold 1: Evaluation at Epoch 20
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.499227   0.207203   0.588095   0.235092  
-Loss: 0.0000
-Fold 1 Epoch 021; Train loss: 0.0000; Time: 00:01:00
-Fold 1 Epoch 022; Train loss: 0.0000; Time: 00:01:01
-Fold 1 Epoch 023; Train loss: 0.0000; Time: 00:01:01
-Fold 1 Epoch 024; Train loss: 0.0000; Time: 00:01:01
-Fold 1 Epoch 025; Train loss: 0.0000; Time: 00:01:01
-Fold 1 Epoch 026; Train loss: 0.0000; Time: 00:01:02
-Fold 1 Epoch 027; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 028; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 029; Train loss: 0.0000; Time: 00:01:01
-Fold 1 Epoch 030; Train loss: 0.0000; Time: 00:01:02
-Fold 1: Evaluation at Epoch 30
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.498696   0.211441   0.610765   0.247696  
-Loss: 0.0000
-Fold 1 Epoch 031; Train loss: 0.0000; Time: 00:01:02
-Fold 1 Epoch 032; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 033; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 034; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 035; Train loss: 0.0000; Time: 00:01:02
-Fold 1 Epoch 036; Train loss: 0.0000; Time: 00:01:01
-Fold 1 Epoch 037; Train loss: 0.0000; Time: 00:01:01
-Fold 1 Epoch 038; Train loss: 0.0000; Time: 00:01:02
-Fold 1 Epoch 039; Train loss: 0.0000; Time: 00:01:02
-Fold 1 Epoch 040; Train loss: 0.0000; Time: 00:01:01
-Fold 1: Evaluation at Epoch 40
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.495780   0.203756   0.583676   0.231540  
-Loss: 0.0000
-Fold 1 Epoch 041; Train loss: 0.0000; Time: 00:01:02
-Fold 1 Epoch 042; Train loss: 0.0000; Time: 00:01:02
-Fold 1 Epoch 043; Train loss: 0.0000; Time: 00:01:01
-Fold 1 Epoch 044; Train loss: 0.0000; Time: 00:01:01
-Fold 1 Epoch 045; Train loss: 0.0000; Time: 00:01:01
-Fold 1 Epoch 046; Train loss: 0.0000; Time: 00:01:02
-Fold 1 Epoch 047; Train loss: 0.0000; Time: 00:01:02
-Fold 1 Epoch 048; Train loss: 0.0000; Time: 00:01:02
-Fold 1 Epoch 049; Train loss: 0.0000; Time: 00:01:01
-Fold 1 Epoch 050; Train loss: 0.0000; Time: 00:01:02
-Fold 1: Evaluation at Epoch 50
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.485306   0.216797   0.564276   0.241707  
-Loss: 0.0000
-Fold 1 Epoch 051; Train loss: 0.0000; Time: 00:01:02
-Fold 1 Epoch 052; Train loss: 0.0000; Time: 00:01:00
-Fold 1 Epoch 053; Train loss: 0.0000; Time: 00:01:02
-Fold 1 Epoch 054; Train loss: 0.0000; Time: 00:01:02
-Fold 1 Epoch 055; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 056; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 057; Train loss: 0.0000; Time: 00:01:02
-Fold 1 Epoch 058; Train loss: 0.0000; Time: 00:01:02
-Fold 1 Epoch 059; Train loss: 0.0000; Time: 00:01:02
-Fold 1 Epoch 060; Train loss: 0.0000; Time: 00:01:02
-Fold 1: Evaluation at Epoch 60
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.495780   0.203756   0.583676   0.231540  
-Loss: 0.0000
-[lr candidate 0.005] Fold 1: loss = [np.float64(1.1031975871865903e-26), np.float64(0.0), np.float64(0.0), np.float64(0.0), np.float64(0.0), np.float64(0.0)]
-Fold 1 Epoch 001; Train loss: 0.1921; Time: 00:01:03
-Fold 1 Epoch 002; Train loss: 0.0818; Time: 00:01:02
-Fold 1 Epoch 003; Train loss: 0.0520; Time: 00:01:02
-Fold 1 Epoch 004; Train loss: 0.0283; Time: 00:01:03
-Fold 1 Epoch 005; Train loss: 0.0129; Time: 00:01:02
-Fold 1 Epoch 006; Train loss: 0.0052; Time: 00:01:02
-Fold 1 Epoch 007; Train loss: 0.0012; Time: 00:01:02
-Fold 1 Epoch 008; Train loss: 0.0003; Time: 00:01:03
-Fold 1 Epoch 009; Train loss: 0.0001; Time: 00:01:02
-Fold 1 Epoch 010; Train loss: 0.0000; Time: 00:01:02
-Fold 1: Evaluation at Epoch 10
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.106191   0.073621   0.599452   0.235439  
-Loss: 0.0000
-Fold 1 Epoch 011; Train loss: 0.0000; Time: 00:01:02
-Fold 1 Epoch 012; Train loss: 0.0000; Time: 00:00:57
-Fold 1 Epoch 013; Train loss: 0.0000; Time: 00:00:59
-Fold 1 Epoch 014; Train loss: 0.0000; Time: 00:01:00
-Fold 1 Epoch 015; Train loss: 0.0000; Time: 00:01:00
-Fold 1 Epoch 016; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 017; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 018; Train loss: 0.0000; Time: 00:01:06
-Fold 1 Epoch 019; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 020; Train loss: 0.0000; Time: 00:01:05
-Fold 1: Evaluation at Epoch 20
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.012992   0.005895   0.032348   0.012048  
-Loss: 0.0000
-Fold 1 Epoch 021; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 022; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 023; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 024; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 025; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 026; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 027; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 028; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 029; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 030; Train loss: 0.0000; Time: 00:01:04
-Fold 1: Evaluation at Epoch 30
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.003535   0.001794   0.010915   0.004142  
-Loss: 0.0000
-Fold 1 Epoch 031; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 032; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 033; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 034; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 035; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 036; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 037; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 038; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 039; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 040; Train loss: 0.0000; Time: 00:01:05
-Fold 1: Evaluation at Epoch 40
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.002961   0.001398   0.009810   0.003571  
-Loss: 0.0000
-Fold 1 Epoch 041; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 042; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 043; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 044; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 045; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 046; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 047; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 048; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 049; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 050; Train loss: 0.0000; Time: 00:01:04
-Fold 1: Evaluation at Epoch 50
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.002033   0.001007   0.007689   0.002758  
-Loss: 0.0000
-Fold 1 Epoch 051; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 052; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 053; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 054; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 055; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 056; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 057; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 058; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 059; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 060; Train loss: 0.0000; Time: 00:01:04
-Fold 1: Evaluation at Epoch 60
-Tuning lr: 100%|██████████| 4/4 [4:24:15<00:00, 3967.31s/it]  Tuning lr: 100%|██████████| 4/4 [4:24:15<00:00, 3963.99s/it]
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.001547   0.000743   0.004463   0.001649  
-Loss: 0.0000
-[lr candidate 0.001] Fold 1: loss = [np.float64(8.066452368582125e-06), np.float64(6.404980409537842e-13), np.float64(2.3847331345361333e-19), np.float64(1.1148534294552665e-25), np.float64(5.569681460926274e-32), np.float64(2.8196628183405917e-38)]
-
-Best learning rate found: 0.01
-Tuning data for lr (loss) saved to ./category/tuning_lr.json
-Tuning optimizer:   0%|          | 0/4 [00:00<?, ?it/s]INFO:root:Using statics: seq_size = 10, genre_vocab_size = 114
-Fold 1 Epoch 001; Train loss: 0.0877; Time: 00:01:06
-Fold 1 Epoch 002; Train loss: 0.0042; Time: 00:01:07
-Fold 1 Epoch 003; Train loss: 0.0001; Time: 00:01:06
-Fold 1 Epoch 004; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 005; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 006; Train loss: 0.0000; Time: 00:01:06
-Fold 1 Epoch 007; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 008; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 009; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 010; Train loss: 0.0000; Time: 00:01:05
-Fold 1: Evaluation at Epoch 10
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.436343   0.217835   0.626320   0.278611  
-Loss: 0.0000
-Fold 1 Epoch 011; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 012; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 013; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 014; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 015; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 016; Train loss: 0.0000; Time: 00:01:06
-Fold 1 Epoch 017; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 018; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 019; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 020; Train loss: 0.0000; Time: 00:01:04
-Fold 1: Evaluation at Epoch 20
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.499227   0.207203   0.588095   0.235092  
-Loss: 0.0000
-Fold 1 Epoch 021; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 022; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 023; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 024; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 025; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 026; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 027; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 028; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 029; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 030; Train loss: 0.0000; Time: 00:01:05
-Fold 1: Evaluation at Epoch 30
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.442706   0.184534   0.557780   0.221736  
-Loss: 0.0000
-Fold 1 Epoch 031; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 032; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 033; Train loss: 0.0000; Time: 00:01:06
-Fold 1 Epoch 034; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 035; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 036; Train loss: 0.0000; Time: 00:01:06
-Fold 1 Epoch 037; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 038; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 039; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 040; Train loss: 0.0000; Time: 00:01:03
-Fold 1: Evaluation at Epoch 40
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.411640   0.164741   0.482788   0.187177  
-Loss: 0.0000
-Fold 1 Epoch 041; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 042; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 043; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 044; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 045; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 046; Train loss: 0.0000; Time: 00:01:06
-Fold 1 Epoch 047; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 048; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 049; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 050; Train loss: 0.0000; Time: 00:01:04
-Fold 1: Evaluation at Epoch 50
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.279376   0.117972   0.357241   0.143390  
-Loss: 0.0000
-Fold 1 Epoch 051; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 052; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 053; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 054; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 055; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 056; Train loss: 0.0000; Time: 00:01:06
-Fold 1 Epoch 057; Train loss: 0.0000; Time: 00:01:17
-Fold 1 Epoch 058; Train loss: 0.0000; Time: 00:01:14
-Fold 1 Epoch 059; Train loss: 0.0000; Time: 00:01:06
-Fold 1 Epoch 060; Train loss: 0.0000; Time: 00:01:06
-Fold 1: Evaluation at Epoch 60
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.423837   0.171651   0.543374   0.210068  
-Loss: 0.0000
-Fold 1 Metrics:
-Epoch	TrainLoss	TestLoss	HR@5	NDCG@5	HR@10	NDCG@10
-10	0.0000	0.0000	0.4363	0.2178	0.6263	0.2786
-20	0.0000	0.0000	0.4992	0.2072	0.5881	0.2351
-30	0.0000	0.0000	0.4427	0.1845	0.5578	0.2217
-40	0.0000	0.0000	0.4116	0.1647	0.4828	0.1872
-50	0.0000	0.0000	0.2794	0.1180	0.3572	0.1434
-60	0.0000	0.0000	0.4238	0.1717	0.5434	0.2101
-
-
-========== Average Metrics Across Folds ==========
-Average Metrics Across Folds:
-Epoch	AvgTrainLoss	AvgTestLoss	AvgHR@5	AvgNDCG@5	AvgHR@10	AvgNDCG@10
-
-Full average metrics saved to category/average_metrics.txt
-Loss data saved to category/loss_data.json
-Average training losses saved to category/avg_train_loss.txt
-Average test metrics saved to category/average_test_metrics.txt
-Tuning optimizer:  25%|██▌       | 1/4 [1:04:32<3:13:38, 3872.84s/it]INFO:root:Using statics: seq_size = 10, genre_vocab_size = 114
-Fold 1 Epoch 001; Train loss: 0.0501; Time: 00:01:05
-Fold 1 Epoch 002; Train loss: 0.0001; Time: 00:01:04
-Fold 1 Epoch 003; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 004; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 005; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 006; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 007; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 008; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 009; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 010; Train loss: 0.0000; Time: 00:01:04
-Fold 1: Evaluation at Epoch 10
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.000000   0.000000   0.000133   0.000039  
-Loss: 0.0000
-Fold 1 Epoch 011; Train loss: 0.0000; Time: 00:01:06
-Fold 1 Epoch 012; Train loss: 0.0000; Time: 00:01:22
-Fold 1 Epoch 013; Train loss: 0.0000; Time: 00:01:06
-Fold 1 Epoch 014; Train loss: 0.0000; Time: 00:01:07
-Fold 1 Epoch 015; Train loss: 0.0000; Time: 00:01:06
-Fold 1 Epoch 016; Train loss: 0.0000; Time: 00:01:01
-Fold 1 Epoch 017; Train loss: 0.0000; Time: 00:01:01
-Fold 1 Epoch 018; Train loss: 0.0000; Time: 00:01:00
-Fold 1 Epoch 019; Train loss: 0.0000; Time: 00:01:01
-Fold 1 Epoch 020; Train loss: 0.0000; Time: 00:01:02
-Fold 1: Evaluation at Epoch 20
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.499227   0.207203   0.588095   0.235092  
-Loss: 0.0000
-Fold 1 Epoch 021; Train loss: 0.0000; Time: 00:01:00
-Fold 1 Epoch 022; Train loss: 0.0000; Time: 00:01:01
-Fold 1 Epoch 023; Train loss: 0.0000; Time: 00:01:02
-Fold 1 Epoch 024; Train loss: 0.0000; Time: 00:01:01
-Fold 1 Epoch 025; Train loss: 0.0000; Time: 00:01:02
-Fold 1 Epoch 026; Train loss: 0.0000; Time: 00:01:01
-Fold 1 Epoch 027; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 028; Train loss: 0.0000; Time: 00:01:02
-Fold 1 Epoch 029; Train loss: 0.0000; Time: 00:01:02
-Fold 1 Epoch 030; Train loss: 0.0000; Time: 00:01:02
-Fold 1: Evaluation at Epoch 30
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.499227   0.207203   0.588095   0.235092  
-Loss: 0.0000
-Fold 1 Epoch 031; Train loss: 0.0000; Time: 00:00:57
-Fold 1 Epoch 032; Train loss: 0.0000; Time: 00:00:59
-Fold 1 Epoch 033; Train loss: 0.0000; Time: 00:00:57
-Fold 1 Epoch 034; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 035; Train loss: 0.0000; Time: 00:01:00
-Fold 1 Epoch 036; Train loss: 0.0000; Time: 00:01:01
-Fold 1 Epoch 037; Train loss: 0.0000; Time: 00:01:01
-Fold 1 Epoch 038; Train loss: 0.0000; Time: 00:01:00
-Fold 1 Epoch 039; Train loss: 0.0000; Time: 00:01:01
-Fold 1 Epoch 040; Train loss: 0.0000; Time: 00:01:02
-Fold 1: Evaluation at Epoch 40
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.499227   0.207203   0.588095   0.235092  
-Loss: 0.0000
-Fold 1 Epoch 041; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 042; Train loss: 0.0000; Time: 00:00:56
-Fold 1 Epoch 043; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 044; Train loss: 0.0000; Time: 00:01:00
-Fold 1 Epoch 045; Train loss: 0.0000; Time: 00:01:01
-Fold 1 Epoch 046; Train loss: 0.0000; Time: 00:01:00
-Fold 1 Epoch 047; Train loss: 0.0000; Time: 00:00:58
-Fold 1 Epoch 048; Train loss: 0.0000; Time: 00:00:59
-Fold 1 Epoch 049; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 050; Train loss: 0.0000; Time: 00:01:02
-Fold 1: Evaluation at Epoch 50
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.499227   0.207203   0.588095   0.235092  
-Loss: 0.0000
-Fold 1 Epoch 051; Train loss: 0.0000; Time: 00:01:01
-Fold 1 Epoch 052; Train loss: 0.0000; Time: 00:01:02
-Fold 1 Epoch 053; Train loss: 0.0000; Time: 00:00:57
-Fold 1 Epoch 054; Train loss: 0.0000; Time: 00:01:01
-Fold 1 Epoch 055; Train loss: 0.0000; Time: 00:01:01
-Fold 1 Epoch 056; Train loss: 0.0000; Time: 00:01:00
-Fold 1 Epoch 057; Train loss: 0.0000; Time: 00:00:59
-Fold 1 Epoch 058; Train loss: 0.0000; Time: 00:01:00
-Fold 1 Epoch 059; Train loss: 0.0000; Time: 00:00:59
-Fold 1 Epoch 060; Train loss: 0.0000; Time: 00:00:59
-Fold 1: Evaluation at Epoch 60
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.499227   0.207203   0.588095   0.235092  
-Loss: 0.0000
-[optimizer candidate nadam] Fold 1: loss = [np.float64(2.0095367862429734e-40), np.float64(0.0), np.float64(0.0), np.float64(0.0), np.float64(0.0), np.float64(0.0)]
-Fold 1 Epoch 001; Train loss: 0.1234; Time: 00:00:54
-Fold 1 Epoch 002; Train loss: 0.0043; Time: 00:00:53
-Fold 1 Epoch 003; Train loss: 0.0001; Time: 00:00:54
-Fold 1 Epoch 004; Train loss: 0.0000; Time: 00:00:56
-Fold 1 Epoch 005; Train loss: 0.0000; Time: 00:00:52
-Fold 1 Epoch 006; Train loss: 0.0000; Time: 00:00:51
-Fold 1 Epoch 007; Train loss: 0.0000; Time: 00:00:53
-Fold 1 Epoch 008; Train loss: 0.0000; Time: 00:00:58
-Fold 1 Epoch 009; Train loss: 0.0000; Time: 00:01:12
-Fold 1 Epoch 010; Train loss: 0.0000; Time: 00:01:12
-Fold 1: Evaluation at Epoch 10
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.000044   0.000017   0.330947   0.095679  
-Loss: 0.0000
-Fold 1 Epoch 011; Train loss: 0.0000; Time: 00:01:12
-Fold 1 Epoch 012; Train loss: 0.0000; Time: 00:01:11
-Fold 1 Epoch 013; Train loss: 0.0000; Time: 00:01:11
-Fold 1 Epoch 014; Train loss: 0.0000; Time: 00:01:11
-Fold 1 Epoch 015; Train loss: 0.0000; Time: 00:01:11
-Fold 1 Epoch 016; Train loss: 0.0000; Time: 00:01:11
-Fold 1 Epoch 017; Train loss: 0.0000; Time: 00:01:12
-Fold 1 Epoch 018; Train loss: 0.0000; Time: 00:01:12
-Fold 1 Epoch 019; Train loss: 0.0000; Time: 00:01:12
-Fold 1 Epoch 020; Train loss: 0.0000; Time: 00:01:12
-Fold 1: Evaluation at Epoch 20
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.001679   0.000723   0.065093   0.021254  
-Loss: 0.0000
-Fold 1 Epoch 021; Train loss: 0.0000; Time: 00:01:11
-Fold 1 Epoch 022; Train loss: 0.0000; Time: 00:01:12
-Fold 1 Epoch 023; Train loss: 0.0000; Time: 00:01:12
-Fold 1 Epoch 024; Train loss: 0.0000; Time: 00:01:11
-Fold 1 Epoch 025; Train loss: 0.0000; Time: 00:01:12
-Fold 1 Epoch 026; Train loss: 0.0000; Time: 00:01:10
-Fold 1 Epoch 027; Train loss: 0.0000; Time: 00:01:11
-Fold 1 Epoch 028; Train loss: 0.0000; Time: 00:01:11
-Fold 1 Epoch 029; Train loss: 0.0000; Time: 00:01:12
-Fold 1 Epoch 030; Train loss: 0.0000; Time: 00:01:10
-Fold 1: Evaluation at Epoch 30
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.414954   0.177060   0.477087   0.197294  
-Loss: 0.0000
-Fold 1 Epoch 031; Train loss: 0.0000; Time: 00:01:13
-Fold 1 Epoch 032; Train loss: 0.0000; Time: 00:01:13
-Fold 1 Epoch 033; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 034; Train loss: 0.0000; Time: 00:01:07
-Fold 1 Epoch 035; Train loss: 0.0000; Time: 00:01:14
-Fold 1 Epoch 036; Train loss: 0.0000; Time: 00:01:12
-Fold 1 Epoch 037; Train loss: 0.0000; Time: 00:01:12
-Fold 1 Epoch 038; Train loss: 0.0000; Time: 00:01:13
-Fold 1 Epoch 039; Train loss: 0.0000; Time: 00:01:13
-Fold 1 Epoch 040; Train loss: 0.0000; Time: 00:01:13
-Fold 1: Evaluation at Epoch 40
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.418445   0.171666   0.596270   0.227350  
-Loss: 0.0000
-Fold 1 Epoch 041; Train loss: 0.0000; Time: 00:01:12
-Fold 1 Epoch 042; Train loss: 0.0000; Time: 00:01:12
-Fold 1 Epoch 043; Train loss: 0.0000; Time: 00:01:12
-Fold 1 Epoch 044; Train loss: 0.0000; Time: 00:01:08
-Fold 1 Epoch 045; Train loss: 0.0000; Time: 00:01:11
-Fold 1 Epoch 046; Train loss: 0.0000; Time: 00:01:12
-Fold 1 Epoch 047; Train loss: 0.0000; Time: 00:01:12
-Fold 1 Epoch 048; Train loss: 0.0000; Time: 00:01:02
-Fold 1 Epoch 049; Train loss: 0.0000; Time: 00:00:54
-Fold 1 Epoch 050; Train loss: 0.0000; Time: 00:00:53
-Fold 1: Evaluation at Epoch 50
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.512882   0.244930   0.635645   0.284362  
-Loss: 0.0000
-Fold 1 Epoch 051; Train loss: 0.0000; Time: 00:00:55
-Fold 1 Epoch 052; Train loss: 0.0000; Time: 00:00:55
-Fold 1 Epoch 053; Train loss: 0.0000; Time: 00:00:54
-Fold 1 Epoch 054; Train loss: 0.0000; Time: 00:00:55
-Fold 1 Epoch 055; Train loss: 0.0000; Time: 00:00:57
-Fold 1 Epoch 056; Train loss: 0.0000; Time: 00:00:53
-Fold 1 Epoch 057; Train loss: 0.0000; Time: 00:00:55
-Fold 1 Epoch 058; Train loss: 0.0000; Time: 00:00:56
-Fold 1 Epoch 059; Train loss: 0.0000; Time: 00:00:54
-Fold 1 Epoch 060; Train loss: 0.0000; Time: 00:00:54
-Fold 1: Evaluation at Epoch 60
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.473728   0.190338   0.621901   0.237940  
-Loss: 0.0000
-Tuning optimizer:  50%|█████     | 2/4 [2:12:27<2:13:02, 3991.35s/it]INFO:root:Using statics: seq_size = 10, genre_vocab_size = 114
-===== STARTING MIND DATA PREPARATION =====
-mind_data/MIND_train already exists, skipping extraction.
-mind_data/MIND_dev already exists, skipping extraction.
-mind_data/MIND_test already exists, skipping extraction.
-
-=== Processing split: train ===
-
-Loading train behaviors and news...
-Loaded 2232748 behaviors, 101527 news items.
-Building genre (category) to ID mapping...
-Found 18 unique genres.
-Users before filtering: 698365
-Users after filtering (≥11): 472419
-Processing users in train:   0%|          | 0/472419 [00:00<?, ?it/s]Processing users in train:   2%|▏         | 7730/472419 [00:00<00:06, 77287.54it/s]Processing users in train:   4%|▍         | 19391/472419 [00:00<00:04, 100412.56it/s]Processing users in train:   6%|▋         | 30591/472419 [00:00<00:04, 105699.79it/s]Processing users in train:   9%|▊         | 41162/472419 [00:02<00:42, 10038.27it/s] Processing users in train:  11%|█         | 52610/472419 [00:02<00:27, 15347.40it/s]Processing users in train:  14%|█▎        | 64309/472419 [00:03<00:18, 22228.78it/s]Processing users in train:  16%|█▌        | 75846/472419 [00:03<00:13, 30442.37it/s]Processing users in train:  18%|█▊        | 87336/472419 [00:03<00:09, 39891.84it/s]Processing users in train:  21%|██        | 98907/472419 [00:03<00:07, 50339.80it/s]Processing users in train:  23%|██▎       | 109793/472419 [00:05<00:29, 12352.18it/s]Processing users in train:  26%|██▌       | 121634/472419 [00:05<00:20, 17248.66it/s]Processing users in train:  28%|██▊       | 133645/472419 [00:05<00:14, 23613.03it/s]Processing users in train:  31%|███       | 145976/472419 [00:06<00:10, 31709.58it/s]Processing users in train:  34%|███▎      | 158318/472419 [00:06<00:07, 41243.24it/s]Processing users in train:  36%|███▌      | 170970/472419 [00:06<00:05, 52269.52it/s]Processing users in train:  39%|███▉      | 183666/472419 [00:06<00:04, 63914.36it/s]Processing users in train:  42%|████▏     | 196222/472419 [00:06<00:03, 75143.16it/s]Processing users in train:  44%|████▍     | 208338/472419 [00:08<00:18, 14210.15it/s]Processing users in train:  47%|████▋     | 220827/472419 [00:09<00:12, 19432.67it/s]Processing users in train:  49%|████▉     | 233462/472419 [00:09<00:09, 26184.62it/s]Processing users in train:  52%|█████▏    | 246055/472419 [00:09<00:06, 34438.34it/s]Processing users in train:  55%|█████▍    | 258771/472419 [00:09<00:04, 44240.16it/s]Processing users in train:  57%|█████▋    | 271615/472419 [00:09<00:03, 55287.60it/s]Processing users in train:  60%|██████    | 283639/472419 [00:09<00:02, 65481.56it/s]Processing users in train:  63%|██████▎   | 295826/472419 [00:09<00:02, 75849.05it/s]Processing users in train:  65%|██████▌   | 308331/472419 [00:09<00:01, 86082.72it/s]Processing users in train:  68%|██████▊   | 320731/472419 [00:09<00:01, 94767.49it/s]Processing users in train:  70%|███████   | 332985/472419 [00:12<00:09, 14407.50it/s]Processing users in train:  73%|███████▎  | 345826/472419 [00:12<00:06, 19830.33it/s]Processing users in train:  76%|███████▌  | 358620/472419 [00:12<00:04, 26709.33it/s]Processing users in train:  79%|███████▊  | 371220/472419 [00:12<00:02, 34982.68it/s]Processing users in train:  81%|████████▏ | 384072/472419 [00:12<00:01, 44932.32it/s]Processing users in train:  84%|████████▍ | 397003/472419 [00:12<00:01, 56062.67it/s]Processing users in train:  87%|████████▋ | 409964/472419 [00:13<00:00, 67723.97it/s]Processing users in train:  89%|████████▉ | 422348/472419 [00:13<00:00, 77922.55it/s]Processing users in train:  92%|█████████▏| 435173/472419 [00:13<00:00, 88409.92it/s]Processing users in train:  95%|█████████▍| 448038/472419 [00:13<00:00, 97640.74it/s]Processing users in train:  98%|█████████▊| 460832/472419 [00:13<00:00, 105035.58it/s]Processing users in train: 100%|██████████| 472419/472419 [00:13<00:00, 34972.39it/s] 
-Final sequences prepared: 472419
-Saved train.df to mind_processed/train.df
-Saved genre_mapping.csv, news_id_mapping.csv, and statics.csv.
-
-=== Processing split: dev ===
-
-Loading dev behaviors and news...
-Loaded 376471 behaviors, 72023 news items.
-Building genre (category) to ID mapping...
-Found 17 unique genres.
-Users before filtering: 248973
-Users after filtering (≥11): 165785
-Processing users in dev:   0%|          | 0/165785 [00:00<?, ?it/s]Processing users in dev:   7%|▋         | 11400/165785 [00:00<00:01, 113989.24it/s]Processing users in dev:  14%|█▍        | 22799/165785 [00:00<00:04, 33976.08it/s] Processing users in dev:  22%|██▏       | 35814/165785 [00:00<00:02, 53238.74it/s]Processing users in dev:  30%|██▉       | 49076/165785 [00:00<00:01, 70898.06it/s]Processing users in dev:  38%|███▊      | 62930/165785 [00:00<00:01, 87210.18it/s]Processing users in dev:  45%|████▌     | 74842/165785 [00:01<00:02, 44900.34it/s]Processing users in dev:  54%|█████▎    | 88811/165785 [00:01<00:01, 58832.54it/s]Processing users in dev:  62%|██████▏   | 102621/165785 [00:01<00:00, 72586.63it/s]Processing users in dev:  70%|██████▉   | 115534/165785 [00:02<00:01, 43925.29it/s]Processing users in dev:  78%|███████▊  | 128758/165785 [00:02<00:00, 55358.39it/s]Processing users in dev:  86%|████████▌ | 142519/165785 [00:02<00:00, 68195.68it/s]Processing users in dev:  94%|█████████▍| 156215/165785 [00:02<00:00, 80731.45it/s]Processing users in dev: 100%|██████████| 165785/165785 [00:02<00:00, 64554.95it/s]
-Final sequences prepared: 165785
-Saved dev.df to mind_processed/dev.df
-
-=== Processing split: test ===
-
-Loading test behaviors and news...
-Loaded 2370727 behaviors, 120959 news items.
-Building genre (category) to ID mapping...
-Found 18 unique genres.
-Users before filtering: 698012
-Users after filtering (≥11): 524436
-Processing users in test:   0%|          | 0/524436 [00:00<?, ?it/s]Processing users in test:   1%|          | 6390/524436 [00:00<00:08, 63890.01it/s]Processing users in test:   3%|▎         | 17481/524436 [00:00<00:05, 91270.88it/s]Processing users in test:   5%|▌         | 27966/524436 [00:00<00:05, 97456.59it/s]Processing users in test:   7%|▋         | 38548/524436 [00:00<00:04, 100750.99it/s]Processing users in test:   9%|▉         | 49230/524436 [00:00<00:04, 102935.65it/s]Processing users in test:  11%|█▏        | 59787/524436 [00:00<00:04, 103829.09it/s]Processing users in test:  13%|█▎        | 70170/524436 [00:03<00:45, 10073.31it/s] Processing users in test:  15%|█▌        | 81113/524436 [00:03<00:30, 14378.68it/s]Processing users in test:  18%|█▊        | 92133/524436 [00:03<00:21, 19964.41it/s]Processing users in test:  20%|█▉        | 103028/524436 [00:03<00:15, 26805.10it/s]Processing users in test:  22%|██▏       | 114207/524436 [00:03<00:11, 35214.55it/s]Processing users in test:  24%|██▍       | 124874/524436 [00:04<00:09, 44064.22it/s]Processing users in test:  26%|██▌       | 135989/524436 [00:04<00:07, 54149.20it/s]Processing users in test:  28%|██▊       | 147114/524436 [00:04<00:05, 64243.69it/s]Processing users in test:  30%|███       | 157840/524436 [00:07<00:34, 10682.15it/s]Processing users in test:  32%|███▏      | 169057/524436 [00:07<00:24, 14788.71it/s]Processing users in test:  34%|███▍      | 180496/524436 [00:07<00:16, 20233.83it/s]Processing users in test:  37%|███▋      | 191770/524436 [00:07<00:12, 26935.02it/s]Processing users in test:  39%|███▊      | 202439/524436 [00:07<00:09, 34414.33it/s]Processing users in test:  41%|████      | 213551/524436 [00:07<00:07, 43476.58it/s]Processing users in test:  43%|████▎     | 224957/524436 [00:07<00:05, 53668.24it/s]Processing users in test:  45%|████▌     | 236322/524436 [00:07<00:04, 63924.55it/s]Processing users in test:  47%|████▋     | 247772/524436 [00:08<00:03, 73853.49it/s]Processing users in test:  49%|████▉     | 258869/524436 [00:08<00:03, 81051.40it/s]Processing users in test:  51%|█████▏    | 269995/524436 [00:11<00:22, 11137.50it/s]Processing users in test:  54%|█████▎    | 280976/524436 [00:11<00:16, 15171.56it/s]Processing users in test:  56%|█████▌    | 292342/524436 [00:11<00:11, 20605.76it/s]Processing users in test:  58%|█████▊    | 303641/524436 [00:11<00:08, 27356.11it/s]Processing users in test:  60%|██████    | 314925/524436 [00:11<00:05, 35435.76it/s]Processing users in test:  62%|██████▏   | 325997/524436 [00:11<00:04, 44391.20it/s]Processing users in test:  64%|██████▍   | 336941/524436 [00:11<00:03, 53839.40it/s]Processing users in test:  66%|██████▋   | 347656/524436 [00:11<00:03, 57296.41it/s]Processing users in test:  68%|██████▊   | 359190/524436 [00:12<00:02, 67889.06it/s]Processing users in test:  71%|███████   | 369910/524436 [00:12<00:02, 76017.95it/s]Processing users in test:  73%|███████▎  | 381098/524436 [00:12<00:01, 84196.04it/s]Processing users in test:  75%|███████▍  | 392353/524436 [00:12<00:01, 91161.66it/s]Processing users in test:  77%|███████▋  | 403745/524436 [00:12<00:01, 97072.90it/s]Processing users in test:  79%|███████▉  | 414707/524436 [00:15<00:10, 10905.87it/s]Processing users in test:  81%|████████  | 425908/524436 [00:15<00:06, 14978.99it/s]Processing users in test:  83%|████████▎ | 436683/524436 [00:15<00:04, 20027.54it/s]Processing users in test:  85%|████████▌ | 448355/524436 [00:15<00:02, 27002.20it/s]Processing users in test:  88%|████████▊ | 459984/524436 [00:15<00:01, 35343.36it/s]Processing users in test:  90%|████████▉ | 471594/524436 [00:16<00:01, 44851.67it/s]Processing users in test:  92%|█████████▏| 483386/524436 [00:16<00:00, 55372.00it/s]Processing users in test:  94%|█████████▍| 495119/524436 [00:16<00:00, 65941.64it/s]Processing users in test:  97%|█████████▋| 506739/524436 [00:16<00:00, 75788.96it/s]Processing users in test:  99%|█████████▉| 518436/524436 [00:16<00:00, 84794.62it/s]Processing users in test: 100%|██████████| 524436/524436 [00:16<00:00, 31748.40it/s]
-Final sequences prepared: 524086
-Saved test.df to mind_processed/test.df
-===== MIND DATA PREPARATION COMPLETE =====
-Tuning optimizer:  75%|███████▌  | 3/4 [3:15:48<1:05:04, 3904.75s/it]INFO:root:Using statics: seq_size = 10, genre_vocab_size = 114
-[optimizer candidate lamb] Fold 1: loss = [np.float64(2.8489273114409822e-05), np.float64(2.6788299375480523e-05), np.float64(2.3540540639536057e-05), np.float64(2.272148788945875e-05), np.float64(1.9829920756308823e-05), np.float64(2.9408403289186497e-05)]
-Fold 1 Epoch 001; Train loss: 0.0656; Time: 00:00:48
-Fold 1 Epoch 002; Train loss: 0.0022; Time: 00:00:47
-Fold 1 Epoch 003; Train loss: 0.0004; Time: 00:00:46
-Fold 1 Epoch 004; Train loss: 0.0002; Time: 00:00:46
-Fold 1 Epoch 005; Train loss: 0.0001; Time: 00:00:46
-Fold 1 Epoch 006; Train loss: 0.0001; Time: 00:00:53
-Fold 1 Epoch 007; Train loss: 0.0001; Time: 00:01:04
-Fold 1 Epoch 008; Train loss: 0.0001; Time: 00:01:04
-Fold 1 Epoch 009; Train loss: 0.0001; Time: 00:01:04
-Fold 1 Epoch 010; Train loss: 0.0000; Time: 00:01:03
-Fold 1: Evaluation at Epoch 10
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.002784   0.001338   0.012285   0.004451  
-Loss: 0.0001
-Fold 1 Epoch 011; Train loss: 0.0001; Time: 00:01:03
-Fold 1 Epoch 012; Train loss: 0.0000; Time: 00:01:02
-Fold 1 Epoch 013; Train loss: 0.0000; Time: 00:01:02
-Fold 1 Epoch 014; Train loss: 0.0000; Time: 00:01:02
-Fold 1 Epoch 015; Train loss: 0.0000; Time: 00:01:02
-Fold 1 Epoch 016; Train loss: 0.0000; Time: 00:01:02
-Fold 1 Epoch 017; Train loss: 0.0000; Time: 00:01:02
-Fold 1 Epoch 018; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 019; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 020; Train loss: 0.0000; Time: 00:01:03
-Fold 1: Evaluation at Epoch 20
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.002298   0.001231   0.012285   0.004587  
-Loss: 0.0000
-Fold 1 Epoch 021; Train loss: 0.0000; Time: 00:01:02
-Fold 1 Epoch 022; Train loss: 0.0000; Time: 00:01:02
-Fold 1 Epoch 023; Train loss: 0.0000; Time: 00:01:02
-Fold 1 Epoch 024; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 025; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 026; Train loss: 0.0000; Time: 00:01:02
-Fold 1 Epoch 027; Train loss: 0.0000; Time: 00:01:01
-Fold 1 Epoch 028; Train loss: 0.0000; Time: 00:01:02
-Fold 1 Epoch 029; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 030; Train loss: 0.0000; Time: 00:01:02
-Fold 1: Evaluation at Epoch 30
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.000619   0.000312   0.018207   0.005668  
-Loss: 0.0000
-Fold 1 Epoch 031; Train loss: 0.0000; Time: 00:01:02
-Fold 1 Epoch 032; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 033; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 034; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 035; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 036; Train loss: 0.0000; Time: 00:01:02
-Fold 1 Epoch 037; Train loss: 0.0000; Time: 00:01:02
-Fold 1 Epoch 038; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 039; Train loss: 0.0000; Time: 00:01:02
-Fold 1 Epoch 040; Train loss: 0.0000; Time: 00:01:01
-Fold 1: Evaluation at Epoch 40
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.002519   0.001257   0.006938   0.002677  
-Loss: 0.0000
-Fold 1 Epoch 041; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 042; Train loss: 0.0000; Time: 00:01:02
-Fold 1 Epoch 043; Train loss: 0.0000; Time: 00:01:02
-Fold 1 Epoch 044; Train loss: 0.0000; Time: 00:01:02
-Fold 1 Epoch 045; Train loss: 0.0000; Time: 00:01:02
-Fold 1 Epoch 046; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 047; Train loss: 0.0000; Time: 00:01:01
-Fold 1 Epoch 048; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 049; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 050; Train loss: 0.0000; Time: 00:01:04
-Fold 1: Evaluation at Epoch 50
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.000221   0.000139   0.001458   0.000524  
-Loss: 0.0000
-Fold 1 Epoch 051; Train loss: 0.0000; Time: 00:01:02
-Fold 1 Epoch 052; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 053; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 054; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 055; Train loss: 0.0000; Time: 00:01:02
-Fold 1 Epoch 056; Train loss: 0.0000; Time: 00:01:02
-Fold 1 Epoch 057; Train loss: 0.0000; Time: 00:01:02
-Fold 1 Epoch 058; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 059; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 060; Train loss: 0.0000; Time: 00:01:01
-Fold 1: Evaluation at Epoch 60
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.000221   0.000133   0.004066   0.001287  
-Loss: 0.0000
-[optimizer candidate adamw] Fold 1: loss = [np.float64(0.00010017279004223587), np.float64(7.247086720392903e-06), np.float64(3.294708960127312e-06), np.float64(8.976108634999363e-07), np.float64(3.9459010345330825e-07), np.float64(7.329372733003377e-07)]
-Fold 1 Epoch 001; Train loss: 0.0453; Time: 00:01:04
-Fold 1 Epoch 002; Train loss: 0.0000; Time: 00:01:02
-Fold 1 Epoch 003; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 004; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 005; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 006; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 007; Train loss: 0.0000; Time: 00:01:02
-Fold 1 Epoch 008; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 009; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 010; Train loss: 0.0000; Time: 00:01:02
-Fold 1: Evaluation at Epoch 10
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.000000   0.000000   0.000133   0.000040  
-Loss: 0.0000
-Fold 1 Epoch 011; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 012; Train loss: 0.0000; Time: 00:01:02
-Fold 1 Epoch 013; Train loss: 0.0000; Time: 00:01:01
-Fold 1 Epoch 014; Train loss: 0.0000; Time: 00:01:02
-Fold 1 Epoch 015; Train loss: 0.0000; Time: 00:01:02
-Fold 1 Epoch 016; Train loss: 0.0000; Time: 00:01:02
-Fold 1 Epoch 017; Train loss: 0.0000; Time: 00:01:02
-Fold 1 Epoch 018; Train loss: 0.0000; Time: 00:01:02
-Fold 1 Epoch 019; Train loss: 0.0000; Time: 00:01:02
-Fold 1 Epoch 020; Train loss: 0.0000; Time: 00:01:03
-Fold 1: Evaluation at Epoch 20
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.457245   0.205059   0.533033   0.229871  
-Loss: 0.0000
-Fold 1 Epoch 021; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 022; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 023; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 024; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 025; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 026; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 027; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 028; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 029; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 030; Train loss: 0.0000; Time: 00:01:02
-Fold 1: Evaluation at Epoch 30
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.473198   0.202378   0.613947   0.246896  
-Loss: 0.0000
-Fold 1 Epoch 031; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 032; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 033; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 034; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 035; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 036; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 037; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 038; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 039; Train loss: 0.0000; Time: 00:01:02
-Fold 1 Epoch 040; Train loss: 0.0000; Time: 00:01:02
-Fold 1: Evaluation at Epoch 40
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.468558   0.199690   0.611428   0.245220  
-Loss: 0.0000
-Fold 1 Epoch 041; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 042; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 043; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 044; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 045; Train loss: 0.0000; Time: 00:01:02
-Fold 1 Epoch 046; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 047; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 048; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 049; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 050; Train loss: 0.0000; Time: 00:01:04
-Fold 1: Evaluation at Epoch 50
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.413629   0.165730   0.523576   0.201235  
-Loss: 0.0000
-Fold 1 Epoch 051; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 052; Train loss: 0.0000; Time: 00:01:02
-Fold 1 Epoch 053; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 054; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 055; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 056; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 057; Train loss: 0.0000; Time: 00:01:04
-Tuning optimizer: 100%|██████████| 4/4 [4:21:19<00:00, 3915.02s/it]  Tuning optimizer: 100%|██████████| 4/4 [4:21:19<00:00, 3919.90s/it]
-Fold 1 Epoch 058; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 059; Train loss: 0.0000; Time: 00:01:06
-Fold 1 Epoch 060; Train loss: 0.0000; Time: 00:01:06
-Fold 1: Evaluation at Epoch 60
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.499227   0.207203   0.587123   0.234987  
-Loss: 0.0000
-[optimizer candidate adam] Fold 1: loss = [np.float64(3.76602898518936e-43), np.float64(0.0), np.float64(0.0), np.float64(0.0), np.float64(0.0), np.float64(0.0)]
-
-Best optimizer found: nadam
-Tuning data for optimizer (loss) saved to ./category/tuning_optimizer.json
-Tuning timesteps:   0%|          | 0/5 [00:00<?, ?it/s]INFO:root:Using statics: seq_size = 10, genre_vocab_size = 114
-Tuning timesteps:  20%|██        | 1/5 [1:07:11<4:28:45, 4031.35s/it]INFO:root:Using statics: seq_size = 10, genre_vocab_size = 114
-Fold 1 Epoch 001; Train loss: 0.0558; Time: 00:01:04
-Fold 1 Epoch 002; Train loss: 0.0017; Time: 00:01:06
-Fold 1 Epoch 003; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 004; Train loss: 0.0000; Time: 00:01:06
-Fold 1 Epoch 005; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 006; Train loss: 0.0000; Time: 00:01:06
-Fold 1 Epoch 007; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 008; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 009; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 010; Train loss: 0.0000; Time: 00:01:05
-Fold 1: Evaluation at Epoch 10
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.000000   0.000000   0.000133   0.000040  
-Loss: 0.0000
-Fold 1 Epoch 011; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 012; Train loss: 0.0000; Time: 00:01:02
-Fold 1 Epoch 013; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 014; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 015; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 016; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 017; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 018; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 019; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 020; Train loss: 0.0000; Time: 00:01:06
-Fold 1: Evaluation at Epoch 20
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.499227   0.207203   0.588095   0.235092  
-Loss: 0.0000
-Fold 1 Epoch 021; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 022; Train loss: 0.0000; Time: 00:01:06
-Fold 1 Epoch 023; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 024; Train loss: 0.0000; Time: 00:01:06
-Fold 1 Epoch 025; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 026; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 027; Train loss: 0.0000; Time: 00:01:06
-Fold 1 Epoch 028; Train loss: 0.0000; Time: 00:01:07
-Fold 1 Epoch 029; Train loss: 0.0000; Time: 00:01:06
-Fold 1 Epoch 030; Train loss: 0.0000; Time: 00:01:05
-Fold 1: Evaluation at Epoch 30
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.499227   0.207203   0.588095   0.235092  
-Loss: 0.0000
-Fold 1 Epoch 031; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 032; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 033; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 034; Train loss: 0.0000; Time: 00:01:06
-Fold 1 Epoch 035; Train loss: 0.0000; Time: 00:01:06
-Fold 1 Epoch 036; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 037; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 038; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 039; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 040; Train loss: 0.0000; Time: 00:01:03
-Fold 1: Evaluation at Epoch 40
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.499227   0.207203   0.588095   0.235092  
-Loss: 0.0000
-Fold 1 Epoch 041; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 042; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 043; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 044; Train loss: 0.0000; Time: 00:01:06
-Fold 1 Epoch 045; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 046; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 047; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 048; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 049; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 050; Train loss: 0.0000; Time: 00:01:04
-Fold 1: Evaluation at Epoch 50
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.499227   0.207203   0.588095   0.235092  
-Loss: 0.0000
-Fold 1 Epoch 051; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 052; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 053; Train loss: 0.0000; Time: 00:01:06
-Fold 1 Epoch 054; Train loss: 0.0000; Time: 00:01:06
-Fold 1 Epoch 055; Train loss: 0.0000; Time: 00:01:06
-Fold 1 Epoch 056; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 057; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 058; Train loss: 0.0000; Time: 00:01:06
-Fold 1 Epoch 059; Train loss: 0.0000; Time: 00:01:06
-Fold 1 Epoch 060; Train loss: 0.0000; Time: 00:01:06
-Fold 1: Evaluation at Epoch 60
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.499227   0.207203   0.588095   0.235092  
-Loss: 0.0000
-[timesteps candidate 100] Fold 1: loss = [np.float64(3.3109086444808465e-37), np.float64(0.0), np.float64(0.0), np.float64(0.0), np.float64(0.0), np.float64(0.0)]
-Fold 1 Epoch 001; Train loss: 0.0529; Time: 00:01:05
-Fold 1 Epoch 002; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 003; Train loss: 0.0000; Time: 00:01:06
-Fold 1 Epoch 004; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 005; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 006; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 007; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 008; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 009; Train loss: 0.0000; Time: 00:01:07
-Fold 1 Epoch 010; Train loss: 0.0000; Time: 00:01:05
-Fold 1: Evaluation at Epoch 10
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.000000   0.000000   0.000133   0.000040  
-Loss: 0.0000
-Fold 1 Epoch 011; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 012; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 013; Train loss: 0.0000; Time: 00:01:06
-Fold 1 Epoch 014; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 015; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 016; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 017; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 018; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 019; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 020; Train loss: 0.0000; Time: 00:01:04
-Fold 1: Evaluation at Epoch 20
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.499227   0.207203   0.588095   0.235092  
-Loss: 0.0000
-Fold 1 Epoch 021; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 022; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 023; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 024; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 025; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 026; Train loss: 0.0000; Time: 00:01:02
-Fold 1 Epoch 027; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 028; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 029; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 030; Train loss: 0.0000; Time: 00:01:05
-Fold 1: Evaluation at Epoch 30
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.499227   0.207203   0.588095   0.235092  
-Loss: 0.0000
-Fold 1 Epoch 031; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 032; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 033; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 034; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 035; Train loss: 0.0000; Time: 00:01:02
-Fold 1 Epoch 036; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 037; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 038; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 039; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 040; Train loss: 0.0000; Time: 00:01:04
-Fold 1: Evaluation at Epoch 40
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.499227   0.207203   0.588095   0.235092  
-Loss: 0.0000
-Fold 1 Epoch 041; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 042; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 043; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 044; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 045; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 046; Train loss: 0.0000; Time: 00:01:06
-Fold 1 Epoch 047; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 048; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 049; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 050; Train loss: 0.0000; Time: 00:01:04
-Fold 1: Evaluation at Epoch 50
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.499227   0.207203   0.588095   0.235092  
-Loss: 0.0000
-Fold 1 Epoch 051; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 052; Train loss: 0.0000; Time: 00:01:06
-Fold 1 Epoch 053; Train loss: 0.0000; Time: 00:01:06
-Fold 1 Epoch 054; Train loss: 0.0000; Time: 00:01:06
-Fold 1 Epoch 055; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 056; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 057; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 058; Train loss: 0.0000; Time: 00:01:06
-Fold 1 Epoch 059; Train loss: 0.0000; Time: 00:01:06
-Fold 1 Epoch 060; Train loss: 0.0000; Time: 00:01:05
-Fold 1: Evaluation at Epoch 60
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.499227   0.207203   0.588095   0.235092  
-Loss: 0.0000
-Tuning timesteps:  40%|████      | 2/5 [2:14:56<3:22:34, 4051.51s/it]INFO:root:Using statics: seq_size = 10, genre_vocab_size = 114
-Tuning timesteps:  60%|██████    | 3/5 [3:23:01<2:15:33, 4066.59s/it]INFO:root:Using statics: seq_size = 10, genre_vocab_size = 114
-[timesteps candidate 150] Fold 1: loss = [np.float64(9.988896311651128e-43), np.float64(0.0), np.float64(0.0), np.float64(0.0), np.float64(0.0), np.float64(0.0)]
-Fold 1 Epoch 001; Train loss: 0.0604; Time: 00:01:06
-Fold 1 Epoch 002; Train loss: 0.0001; Time: 00:01:06
-Fold 1 Epoch 003; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 004; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 005; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 006; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 007; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 008; Train loss: 0.0000; Time: 00:01:06
-Fold 1 Epoch 009; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 010; Train loss: 0.0000; Time: 00:01:05
-Fold 1: Evaluation at Epoch 10
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.000000   0.000000   0.000133   0.000040  
-Loss: 0.0000
-Fold 1 Epoch 011; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 012; Train loss: 0.0000; Time: 00:01:06
-Fold 1 Epoch 013; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 014; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 015; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 016; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 017; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 018; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 019; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 020; Train loss: 0.0000; Time: 00:01:04
-Fold 1: Evaluation at Epoch 20
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.499227   0.207203   0.588095   0.235092  
-Loss: 0.0000
-Fold 1 Epoch 021; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 022; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 023; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 024; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 025; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 026; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 027; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 028; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 029; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 030; Train loss: 0.0000; Time: 00:01:04
-Fold 1: Evaluation at Epoch 30
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.499227   0.207203   0.588095   0.235092  
-Loss: 0.0000
-Fold 1 Epoch 031; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 032; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 033; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 034; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 035; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 036; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 037; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 038; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 039; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 040; Train loss: 0.0000; Time: 00:01:04
-Fold 1: Evaluation at Epoch 40
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.499227   0.207203   0.588095   0.235092  
-Loss: 0.0000
-Fold 1 Epoch 041; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 042; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 043; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 044; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 045; Train loss: 0.0000; Time: 00:01:02
-Fold 1 Epoch 046; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 047; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 048; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 049; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 050; Train loss: 0.0000; Time: 00:01:04
-Fold 1: Evaluation at Epoch 50
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.499227   0.207203   0.588095   0.235092  
-Loss: 0.0000
-Fold 1 Epoch 051; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 052; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 053; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 054; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 055; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 056; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 057; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 058; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 059; Train loss: 0.0000; Time: 00:01:06
-Fold 1 Epoch 060; Train loss: 0.0000; Time: 00:01:06
-Fold 1: Evaluation at Epoch 60
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.499227   0.207203   0.588095   0.235092  
-Loss: 0.0000
-[timesteps candidate 200] Fold 1: loss = [np.float64(1.4493269127049776e-38), np.float64(0.0), np.float64(0.0), np.float64(0.0), np.float64(0.0), np.float64(0.0)]
-Fold 1 Epoch 001; Train loss: 0.0539; Time: 00:01:06
-Fold 1 Epoch 002; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 003; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 004; Train loss: 0.0000; Time: 00:01:06
-Fold 1 Epoch 005; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 006; Train loss: 0.0000; Time: 00:01:06
-Fold 1 Epoch 007; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 008; Train loss: 0.0000; Time: 00:01:06
-Fold 1 Epoch 009; Train loss: 0.0000; Time: 00:01:00
-Fold 1 Epoch 010; Train loss: 0.0000; Time: 00:01:03
-Fold 1: Evaluation at Epoch 10
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.000000   0.000000   0.000133   0.000040  
-Loss: 0.0000
-Fold 1 Epoch 011; Train loss: 0.0000; Time: 00:01:00
-Fold 1 Epoch 012; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 013; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 014; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 015; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 016; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 017; Train loss: 0.0000; Time: 00:01:01
-Fold 1 Epoch 018; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 019; Train loss: 0.0000; Time: 00:01:01
-Fold 1 Epoch 020; Train loss: 0.0000; Time: 00:00:59
-Fold 1: Evaluation at Epoch 20
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.499227   0.207203   0.588095   0.235092  
-Loss: 0.0000
-Fold 1 Epoch 021; Train loss: 0.0000; Time: 00:01:02
-Fold 1 Epoch 022; Train loss: 0.0000; Time: 00:00:59
-Fold 1 Epoch 023; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 024; Train loss: 0.0000; Time: 00:01:06
-Fold 1 Epoch 025; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 026; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 027; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 028; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 029; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 030; Train loss: 0.0000; Time: 00:01:05
-Fold 1: Evaluation at Epoch 30
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.499227   0.207203   0.588095   0.235092  
-Loss: 0.0000
-Fold 1 Epoch 031; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 032; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 033; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 034; Train loss: 0.0000; Time: 00:01:00
-Fold 1 Epoch 035; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 036; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 037; Train loss: 0.0000; Time: 00:01:02
-Fold 1 Epoch 038; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 039; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 040; Train loss: 0.0000; Time: 00:01:05
-Fold 1: Evaluation at Epoch 40
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.499227   0.207203   0.588095   0.235092  
-Loss: 0.0000
-Fold 1 Epoch 041; Train loss: 0.0000; Time: 00:01:01
-Fold 1 Epoch 042; Train loss: 0.0000; Time: 00:01:06
-Fold 1 Epoch 043; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 044; Train loss: 0.0000; Time: 00:01:06
-Fold 1 Epoch 045; Train loss: 0.0000; Time: 00:00:59
-Fold 1 Epoch 046; Train loss: 0.0000; Time: 00:01:03
-Fold 1 Epoch 047; Train loss: 0.0000; Time: 00:01:04
-Fold 1 Epoch 048; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 049; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 050; Train loss: 0.0000; Time: 00:01:01
-Fold 1: Evaluation at Epoch 50
-HR@5       NDCG@5     HR@10      NDCG@10   
-0.499227   0.207203   0.588095   0.235092  
-Loss: 0.0000
-Fold 1 Epoch 051; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 052; Train loss: 0.0000; Time: 00:00:59
-Fold 1 Epoch 053; Train loss: 0.0000; Time: 00:00:56
-Fold 1 Epoch 054; Train loss: 0.0000; Time: 00:00:55
-Fold 1 Epoch 055; Train loss: 0.0000; Time: 00:00:54
-Fold 1 Epoch 056; Train loss: 0.0000; Time: 00:01:01
-Fold 1 Epoch 057; Train loss: 0.0000; Time: 00:01:06
-Fold 1 Epoch 058; Train loss: 0.0000; Time: 00:01:07
-Fold 1 Epoch 059; Train loss: 0.0000; Time: 00:01:05
-Fold 1 Epoch 060; Train loss: 0.0000; Time: 00:01:03
-Fold 1: Evaluation at Epoch 60
-Tuning timesteps:  80%|████████  | 4/5 [4:31:25<1:08:01, 4081.20s/it]INFO:root:Using statics: seq_size = 10, genre_vocab_size = 114
-INFO:root:Using statics: seq_size = 10, genre_vocab_size = 18
